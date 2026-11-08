@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Audio: nunca entra a git
+*.wav
+*.mp3
+*.flac
+*.aif
+*.aiff
+*.ogg
+*.opus
+*.m4a
+*.wma
+
+# Canciones: fuera de git, salvo la demo
+/canciones/*
+!/canciones/.gitkeep
+!/canciones/demo/
+
+# Claude Code: ajustes personales de cada quien
+.claude/settings.local.json
+
+# Sistema y secretos
+.DS_Store
+Thumbs.db
+desktop.ini
+.env
