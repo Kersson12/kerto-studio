@@ -275,7 +275,7 @@ El motor escucha tu voz, te dice tu tono y qué autotune necesitas, y adapta el 
 
 **Lista cuando**
 
-- [ ] Con tonos sintéticos, el análisis acierta la nota con menos de 5 cents de error
+- [x] Con tonos sintéticos, el análisis acierta la nota con menos de 5 cents de error
 - [ ] Con tu voz, el informe tiene sentido para ti
 - [ ] Sabes qué autotune usar, o que no lo necesitas
 - [ ] El beat suena en tu tonalidad
