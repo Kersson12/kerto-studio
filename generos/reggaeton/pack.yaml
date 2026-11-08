@@ -1,0 +1,75 @@
+# Pack de reggaetón para Kerto.
+#
+# Cómo leer los patrones: cada carácter es una semicorchea (1/16) y cada
+# grupo de cuatro es un tiempo del compás. X = golpe fuerte, x = normal,
+# o = suave, . = silencio. Los espacios y | solo sirven para leer mejor.
+#
+# El dembow es el corazón del género: bombo en cada tiempo y caja en
+# "...x ..x. ...x ..x.". Todas las variaciones lo mantienen.
+
+nombre: reggaeton
+descripcion: Reggaetón con dembow, de 88 a 100 BPM.
+compas: 4/4
+paso: 1/16
+bpm: {min: 88, max: 100, defecto: 95}
+tonalidad: Am
+frase: 4 # compases por frase: el relleno cae al cerrar cada una
+
+# Humanización suave: hasta 1/384 de redonda (unos 7 ms a 95 BPM) y ±6 de fuerza.
+humanizar: {tiempo: 1/384, fuerza: 6}
+
+# Notas de batería según General MIDI (C4 = 60): así suenan bien en cualquier DAW.
+instrumentos:
+  bombo: {nota: C2} # 36, bombo
+  caja: {nota: D2} # 38, caja
+  hihat: {nota: F#2} # 42, hi-hat cerrado
+  percusion: {nota: D#4} # 63, conga
+  # El 808 toca la raíz de cada acorde desde E1 hacia arriba.
+  # largo: lo máximo que se sostiene cada nota. programa 38 = Synth Bass 1 (GM, desde 0).
+  808: {grave: E1, largo: 3/8, programa: 38}
+
+variaciones:
+  - nombre: clasico
+    descripcion: Dembow clásico, directo para bailar.
+    progresion: i VI III VII # en Am: Am F C G
+    patrones:
+      bombo: "X... x... X... x..."
+      caja: "...x ..x. ...x ..x."
+      hihat: "x.o. x.o. x.o. x.o."
+      percusion: "..o. ..o. ..o. ..o."
+      808: "X..x ..x. X..x ..x."
+
+  - nombre: movido
+    descripcion: Perreo más movido, con hi-hat en semicorcheas y conga que empuja.
+    progresion: i VII VI VII # en Am: Am G F G
+    patrones:
+      bombo: "X... x... X... x..."
+      caja: "...x ..xo ...x ..x."
+      hihat: "xoxo xoxo xoxo xoxo"
+      percusion: "o.x. .xo. o.x. .xox"
+      808: "X..x ..x. X..x .xx."
+
+  - nombre: oscuro
+    descripcion: Perreo oscuro de discoteca, con más espacio y 808 largo.
+    progresion: i VI iv V # en Am: Am F Dm E
+    patrones:
+      bombo: "X... x... X... x..."
+      caja: "...x ..x. ...x ..x."
+      hihat: "..x. ..x. ..x. ..x."
+      percusion: ".... .... .... ..o."
+      808: "X... ...x X... ..x."
+
+# Compases especiales. Solo cambian los instrumentos que aparecen;
+# los demás siguen con el patrón de la variación.
+transiciones:
+  # Al cerrar cada frase de 4 compases: redoble corto de caja y conga.
+  relleno:
+    caja: "...x ..x. ...x oxxX"
+    percusion: "..o. ..o. ..ox oxox"
+  # Último compás antes del coro: todo se calla en el último tiempo.
+  corte:
+    bombo: "X... x... X... ...."
+    caja: "...x ..x. ...x ...."
+    hihat: "x.o. x.o. x.o. ...."
+    percusion: ".... .... .... ...."
+    808: "X..x ..x. .... ...."
