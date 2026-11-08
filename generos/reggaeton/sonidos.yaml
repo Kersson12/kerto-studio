@@ -1,0 +1,15 @@
+# Sonido de cada instrumento del reggaetón cuando el beat se pasa a WAV.
+#
+# surge: patch de fábrica de Surge XT (carpeta/nombre). Si Surge XT no está
+#        instalado o el patch no suena, se usa la voz faust.
+# faust: voz del sintetizador interno de Kerto: bombo, caja, hihat, conga o sub.
+# nivel: pico de la pista en dBFS antes de mezclar (0 es el máximo; más
+#        negativo suena más bajo).
+#
+# Son sonidos de partida: cámbialos a tu gusto y vuelve a renderizar.
+
+bombo: {surge: Percussion/Kick 909ish, faust: bombo, nivel: -4}
+caja: {surge: Percussion/Snare Tight, faust: caja, nivel: -9}
+hihat: {faust: hihat, nivel: -18}
+percusion: {faust: conga, nivel: -16}
+808: {surge: Basses/Sub 1, faust: sub, nivel: -3}
