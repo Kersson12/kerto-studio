@@ -7,9 +7,11 @@
 #        negativo suena más bajo).
 #
 # Son sonidos de partida: cámbialos a tu gusto y vuelve a renderizar.
+# El 808 usa Sub Square y no Sub 1: Sub 1 es un seno puro que no se oye en
+# parlantes de laptop o de teléfono; Sub Square suma armónicos entre 80 y 300 Hz.
 
 bombo: {surge: Percussion/Kick 909ish, faust: bombo, nivel: -4}
-caja: {surge: Percussion/Snare Tight, faust: caja, nivel: -9}
-hihat: {faust: hihat, nivel: -18}
-percusion: {faust: conga, nivel: -16}
-808: {surge: Basses/Sub 1, faust: sub, nivel: -3}
+caja: {surge: Percussion/Snare Tight, faust: caja, nivel: -6}
+hihat: {faust: hihat, nivel: -12}
+percusion: {faust: conga, nivel: -12}
+808: {surge: Basses/Sub Square, faust: sub, nivel: -5}

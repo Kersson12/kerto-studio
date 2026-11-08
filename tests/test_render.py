@@ -128,7 +128,7 @@ def test_sonidos_del_reggaeton_cubren_todos_los_instrumentos():
     assert list(sonidos) == list(cargar_pack("reggaeton").instrumentos)
     assert all(s.faust in VOCES for s in sonidos.values())
     assert all(s.nivel <= 0 for s in sonidos.values())
-    assert sonidos["808"].surge == "Basses/Sub 1"
+    assert sonidos["808"].surge == "Basses/Sub Square"
 
 
 @pytest.mark.parametrize(
