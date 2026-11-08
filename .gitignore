@@ -28,6 +28,8 @@ dist/
 
 # Claude Code: ajustes personales de cada quien
 .claude/settings.local.json
+# Reglas de ECC copiadas a mano por cada dev (no se redistribuyen)
+.claude/rules/ecc/
 
 # Sistema y secretos
 .DS_Store
