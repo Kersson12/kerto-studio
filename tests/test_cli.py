@@ -48,18 +48,21 @@ def test_beat_crea_midi_y_wav_de_cada_variacion(tmp_path, capsys):
     assert beat(tmp_path, "--compases", "8", "--variaciones", "3", "--sin-surge") == 0
     nombres = sorted(p.name for p in (tmp_path / "beats").iterdir())
     assert nombres == [
-        "beat-1-clasico.mid",
-        "beat-1-clasico.wav",
-        "beat-2-movido.mid",
-        "beat-2-movido.wav",
-        "beat-3-oscuro.mid",
-        "beat-3-oscuro.wav",
+        "beat-1-clasico-Am.mid",
+        "beat-1-clasico-Am.wav",
+        "beat-2-movido-Am.mid",
+        "beat-2-movido-Am.wav",
+        "beat-3-oscuro-Am.mid",
+        "beat-3-oscuro-Am.wav",
     ]
     lineas = capsys.readouterr().out.strip().splitlines()
     assert len(lineas) == 3
     archivos, genero, tempo = lineas
     assert archivos.startswith("Archivos: 6 en ")
-    assert "beat-1-clasico, beat-2-movido, beat-3-oscuro (.mid y .wav)" in archivos
+    assert (
+        "beat-1-clasico-Am, beat-2-movido-Am, beat-3-oscuro-Am (.mid y .wav)"
+        in archivos
+    )
     assert genero.startswith("Género: reggaeton · 3 variaciones · 8 compases de 4/4")
     assert "Faust (bombo, caja, hihat, percusion, 808)" in genero
     assert tempo == (
@@ -72,7 +75,7 @@ def test_beat_solo_midi_y_valores_del_pack(tmp_path, capsys):
         main(["beat", "--salida", str(tmp_path), "--sin-wav", "--variaciones", "1"])
         == 0
     )
-    assert [p.name for p in tmp_path.iterdir()] == ["beat-1-clasico.mid"]
+    assert [p.name for p in tmp_path.iterdir()] == ["beat-1-clasico-Am.mid"]
     archivos, genero, tempo = capsys.readouterr().out.strip().splitlines()
     assert archivos.endswith("(.mid)")
     assert genero.endswith("sonido: solo MIDI")
@@ -80,7 +83,7 @@ def test_beat_solo_midi_y_valores_del_pack(tmp_path, capsys):
 
 
 def test_beat_no_pisa_archivos_sin_permiso(tmp_path, capsys):
-    destino = tmp_path / "beats" / "beat-1-clasico.mid"
+    destino = tmp_path / "beats" / "beat-1-clasico-Am.mid"
     destino.parent.mkdir()
     destino.write_bytes(b"mio")
     assert beat(tmp_path, "--variaciones", "1", "--sin-wav") == 1
@@ -99,9 +102,35 @@ def test_beat_no_pisa_archivos_sin_permiso(tmp_path, capsys):
         (["--bpm", "400"], "bpm"),
         (["--tonalidad", "H"], "tonalidad"),
         (["--compases", "0"], "compases"),
+        (["--variacion", "salsa"], "clasico, movido, oscuro"),
     ],
 )
 def test_beat_explica_los_errores(tmp_path, capsys, extra, mensaje):
     assert beat(tmp_path, "--sin-wav", *extra) == 1
     assert mensaje in capsys.readouterr().err
     assert not (tmp_path / "beats").exists()
+
+
+def test_beat_transpone_una_sola_variacion(tmp_path, capsys):
+    import mido
+
+    def notas(archivo):
+        midi = mido.MidiFile(archivo)
+        return {
+            pista.name: [m.note for m in pista if m.type == "note_on"]
+            for pista in midi.tracks[1:]
+        }
+
+    assert beat(tmp_path, "--variacion", "movido", "--sin-wav") == 0
+    capsys.readouterr()
+    assert (
+        beat(tmp_path, "--variacion", "movido", "--tonalidad", "Cm", "--sin-wav") == 0
+    )
+    _, genero, tempo = capsys.readouterr().out.strip().splitlines()
+    assert "· 1 variación ·" in genero
+    assert tempo == "BPM: 95 · Tonalidad: Cm · acordes: Cm Bb Ab Bb"
+    en_am = notas(tmp_path / "beats" / "beat-2-movido-Am.mid")
+    en_cm = notas(tmp_path / "beats" / "beat-2-movido-Cm.mid")
+    assert [n + 3 for n in en_am["808"]] == en_cm["808"]
+    for instrumento in ("bombo", "caja", "hihat", "percusion"):
+        assert en_am[instrumento] == en_cm[instrumento]

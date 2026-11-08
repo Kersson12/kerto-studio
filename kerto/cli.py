@@ -89,6 +89,9 @@ def _agregar_beat(comandos: argparse._SubParsersAction) -> None:
     beat.add_argument(
         "--variaciones", type=int, default=3, help="cuántas versiones crear (3)"
     )
+    beat.add_argument(
+        "--variacion", help="solo esta versión, por ejemplo movido (para transponer)"
+    )
     beat.add_argument("--semilla", type=int, default=0, help="azar de la humanización")
     beat.add_argument(
         "--salida",
@@ -115,6 +118,7 @@ def _comando_beat(args: argparse.Namespace) -> int:
             tonalidad=args.tonalidad,
             compases=args.compases,
             variaciones=args.variaciones,
+            variacion=args.variacion,
             semilla=args.semilla,
             salida=args.salida,
             wav=not args.sin_wav,

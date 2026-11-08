@@ -35,6 +35,7 @@ def generar_beats(
     tonalidad: str | None = None,
     compases: int = COMPASES_POR_DEFECTO,
     variaciones: int = VARIACIONES_POR_DEFECTO,
+    variacion: str | None = None,
     semilla: int = 0,
     salida: Path = SALIDA_POR_DEFECTO,
     wav: bool = True,
@@ -42,13 +43,15 @@ def generar_beats(
     sobrescribir: bool = False,
     carpeta: Path = GENEROS,
 ) -> Beats:
-    """Crea las variaciones del género y escribe beat-N-nombre.mid (y .wav)."""
+    """Crea las variaciones y escribe beat-N-nombre-tonalidad.mid (y .wav).
+
+    Con `variacion`, solo esa: así se transpone la base a otra tonalidad con el
+    mismo ritmo y la misma humanización (misma semilla).
+    """
     pack = cargar_pack(genero, carpeta=carpeta)
-    total = len(pack.variaciones)
-    if not 1 <= variaciones <= total:
-        raise ErrorBeat(
-            f"el pack {genero!r} tiene {total} variaciones: pide de 1 a {total}"
-        )
+    indices = _indices(
+        pack.nombre, [v.nombre for v in pack.variaciones], variaciones, variacion
+    )
     beats = tuple(
         crear_beat(
             pack,
@@ -58,11 +61,14 @@ def generar_beats(
             compases=compases,
             semilla=semilla,
         )
-        for indice in range(variaciones)
+        for indice in indices
     )
     sonidos = cargar_sonidos(genero, carpeta=carpeta) if wav else {}
     extensiones = (".mid", ".wav") if wav else (".mid",)
-    bases = [salida / f"beat-{n}-{b.variacion}" for n, b in enumerate(beats, 1)]
+    bases = [
+        salida / f"beat-{indice + 1}-{beat.variacion}-{beat.tonalidad}"
+        for indice, beat in zip(indices, beats, strict=True)
+    ]
     archivos = tuple(base.with_suffix(ext) for base in bases for ext in extensiones)
     existentes = [a.name for a in archivos if a.exists()]
     if existentes and not sobrescribir:
@@ -82,6 +88,23 @@ def generar_beats(
     return Beats(salida, archivos, beats, motores)
 
 
+def _indices(
+    genero: str, nombres: list[str], variaciones: int, variacion: str | None
+) -> list[int]:
+    if variacion is not None:
+        if variacion not in nombres:
+            raise ErrorBeat(
+                f"variación desconocida {variacion!r}: usa {', '.join(nombres)}"
+            )
+        return [nombres.index(variacion)]
+    if not 1 <= variaciones <= len(nombres):
+        raise ErrorBeat(
+            f"el pack {genero!r} tiene {len(nombres)} variaciones:"
+            f" pide de 1 a {len(nombres)}"
+        )
+    return list(range(variaciones))
+
+
 def resumir(beats: Beats) -> str:
     """Tres líneas: archivos creados, género y sonido, BPM y tonalidad."""
     primero = beats.beats[0]
@@ -91,8 +114,10 @@ def resumir(beats: Beats) -> str:
         f"Archivos: {len(beats.archivos)} en {beats.salida.as_posix()}/"
         f" · {', '.join(nombres)} ({extensiones})"
     )
+    cantidad = len(beats.beats)
+    variaciones = "1 variación" if cantidad == 1 else f"{cantidad} variaciones"
     genero = (
-        f"Género: {primero.genero} · {len(beats.beats)} variaciones"
+        f"Género: {primero.genero} · {variaciones}"
         f" · {primero.compases} compases de {primero.compas}"
         f" · sonido: {_sonido(beats.motores)}"
     )
