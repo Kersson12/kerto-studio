@@ -226,10 +226,10 @@ El repo queda listo para trabajar: plugins instalados, reglas claras y tests cor
 
 **Lista cuando**
 
-- [ ] Los plugins aparecen en `/plugin` y las reglas de ECC están copiadas
-- [ ] El repo está en GitHub con licencia GPL-3.0
-- [ ] `uv run pytest` pasa en tu PC y en CI
-- [ ] Existe el `cancion.yaml` de tu canción con la vibe escrita
+- [x] Los plugins aparecen en `/plugin` y las reglas de ECC están copiadas
+- [x] El repo está en GitHub con licencia GPL-3.0
+- [x] `uv run pytest` pasa en tu PC y en CI
+- [x] Existe el `cancion.yaml` de tu canción con la vibe escrita
 
 ## Fase 1 — Primer beat
 
