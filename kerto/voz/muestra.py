@@ -25,6 +25,7 @@ from kerto.voz.analisis import (
     detectar_tono,
     informe_desde_tono,
 )
+from kerto.voz.autotune import Recomendacion
 
 FRECUENCIA_GRABACION = 44100
 SEGUNDOS_MUESTRA = 30.0
@@ -117,13 +118,16 @@ def _consejos(
     return tuple(consejos)
 
 
-def guardar_informe(muestra: Muestra, ruta_audio: Path) -> Path:
+def guardar_informe(
+    muestra: Muestra, ruta_audio: Path, autotune: Recomendacion | None = None
+) -> Path:
     """Escribe <audio>.informe.json junto al audio, con el tono cuadro a cuadro."""
     tono = muestra.tono
     datos = {
         "archivo": ruta_audio.name,
         "fecha": datetime.now().isoformat(timespec="seconds"),
         "informe": asdict(muestra.informe),
+        "autotune": asdict(autotune) if autotune else None,
         "consejos": list(muestra.consejos),
         "tono": [
             [round(float(t), 3), round(float(hz), 2)]

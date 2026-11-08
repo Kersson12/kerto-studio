@@ -50,12 +50,26 @@ def _agregar_voz(comandos: argparse._SubParsersAction) -> None:
     )
     analizar = acciones.add_parser("analizar", help="analiza un WAV ya grabado")
     analizar.add_argument("archivo", type=Path, help="WAV, FLAC, OGG o MP3")
+    for accion in (grabar, analizar):
+        accion.add_argument(
+            "--exigencia",
+            default="normal",
+            choices=("normal", "exigente", "relajado"),
+            help="regla del autotune (normal)",
+        )
+        accion.add_argument(
+            "--estilo",
+            default="segun_voz",
+            choices=("segun_voz", "marcado", "natural"),
+            help="autotune según tu voz, siempre marcado o siempre natural",
+        )
     acciones.add_parser("dispositivos", help="lista los micrófonos")
 
 
 def _comando_voz(args: argparse.Namespace) -> int:
     from kerto.voz import muestra as voz
     from kerto.voz.analisis import ErrorVoz, resumir_informe
+    from kerto.voz.autotune import recomendar_autotune
 
     if args.accion == "dispositivos":
         print("\n".join(voz.listar_entradas()))
@@ -67,12 +81,14 @@ def _comando_voz(args: argparse.Namespace) -> int:
         else:
             archivo = args.archivo
         resultado = voz.analizar_muestra(*voz.leer_audio(archivo))
-        informe = voz.guardar_informe(resultado, archivo)
+        autotune = recomendar_autotune(resultado.informe, args.exigencia, args.estilo)
+        informe = voz.guardar_informe(resultado, archivo, autotune)
     except ErrorVoz as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
     consejos = " · ".join(resultado.consejos) or "la grabación está limpia"
     print(resumir_informe(resultado.informe))
+    print(autotune.resumen())
     print(f"Consejos: {consejos}")
     print(f"Informe completo: {informe.as_posix()}")
     return 0

@@ -101,9 +101,17 @@ def test_voz_analizar_un_wav(tmp_path, capsys):
     assert main(["voz", "analizar", str(ruta)]) == 0
     lineas = capsys.readouterr().out.strip().splitlines()
     assert lineas[0].startswith("Voz: 3.0 s")
-    assert lineas[4] == "Consejos: la grabación está limpia"
-    assert lineas[5].endswith("toma.informe.json")
-    assert (tmp_path / "toma.informe.json").is_file()
+    assert lineas[4].startswith("Autotune: sin autotune · ")
+    assert lineas[5] == "Consejos: la grabación está limpia"
+    assert lineas[6].endswith("toma.informe.json")
+    datos = json.loads((tmp_path / "toma.informe.json").read_text(encoding="utf-8"))
+    assert datos["autotune"]["nivel"] == "ninguno"
+
+
+def test_voz_analizar_con_estilo_marcado(tmp_path, capsys):
+    ruta = escribir_wav(tmp_path / "toma.wav", con_silencio(voz())[None, :], SR)
+    assert main(["voz", "analizar", str(ruta), "--estilo", "marcado"]) == 0
+    assert "Autotune: corrección marcada" in capsys.readouterr().out
 
 
 def test_voz_analizar_explica_los_errores(tmp_path, capsys):
