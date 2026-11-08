@@ -105,7 +105,11 @@ def detectar_tono(audio: np.ndarray, frecuencia: int) -> Tono:
 def analizar_voz(audio: np.ndarray, frecuencia: int) -> Informe:
     """Rango, zona cómoda, desafinación, temblor y tonalidades de una muestra."""
     segundos = _mono(audio).size / frecuencia
-    tono = detectar_tono(audio, frecuencia)
+    return informe_desde_tono(detectar_tono(audio, frecuencia), segundos)
+
+
+def informe_desde_tono(tono: Tono, segundos: float) -> Informe:
+    """El informe a partir de un tono ya detectado (pYIN corre una sola vez)."""
     if not tono.sonoro.any():
         raise ErrorVoz("no se detectó voz: canta más cerca del micrófono o más fuerte")
     midi = hz_a_midi(tono.hz[tono.sonoro])

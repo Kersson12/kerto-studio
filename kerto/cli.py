@@ -30,7 +30,52 @@ def crear_parser() -> argparse.ArgumentParser:
         "--compas", default="4/4", help="compás con el que se validan las barras (4/4)"
     )
     _agregar_beat(comandos)
+    _agregar_voz(comandos)
     return parser
+
+
+def _agregar_voz(comandos: argparse._SubParsersAction) -> None:
+    voz = comandos.add_parser("voz", help="graba o analiza una muestra de tu voz")
+    acciones = voz.add_subparsers(dest="accion", metavar="accion", required=True)
+    grabar = acciones.add_parser("grabar", help="graba del micrófono y analiza")
+    grabar.add_argument("--segundos", type=float, default=30.0, help="largo (30)")
+    grabar.add_argument("--cancion", help="guarda en canciones/<cancion>/voz")
+    grabar.add_argument(
+        "--salida",
+        type=Path,
+        help="carpeta donde guardar (por defecto canciones/borrador/voz)",
+    )
+    grabar.add_argument(
+        "--dispositivo", type=int, help="número del micrófono (kerto voz dispositivos)"
+    )
+    analizar = acciones.add_parser("analizar", help="analiza un WAV ya grabado")
+    analizar.add_argument("archivo", type=Path, help="WAV, FLAC, OGG o MP3")
+    acciones.add_parser("dispositivos", help="lista los micrófonos")
+
+
+def _comando_voz(args: argparse.Namespace) -> int:
+    from kerto.voz import muestra as voz
+    from kerto.voz.analisis import ErrorVoz, resumir_informe
+
+    if args.accion == "dispositivos":
+        print("\n".join(voz.listar_entradas()))
+        return 0
+    try:
+        if args.accion == "grabar":
+            carpeta = args.salida or voz.carpeta_de_cancion(args.cancion or "borrador")
+            archivo = voz.grabar_muestra(carpeta, args.segundos, args.dispositivo)
+        else:
+            archivo = args.archivo
+        resultado = voz.analizar_muestra(*voz.leer_audio(archivo))
+        informe = voz.guardar_informe(resultado, archivo)
+    except ErrorVoz as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    consejos = " · ".join(resultado.consejos) or "la grabación está limpia"
+    print(resumir_informe(resultado.informe))
+    print(f"Consejos: {consejos}")
+    print(f"Informe completo: {informe.as_posix()}")
+    return 0
 
 
 def _agregar_beat(comandos: argparse._SubParsersAction) -> None:
@@ -109,5 +154,7 @@ def main(argv: list[str] | None = None) -> int:
         return _comando_notacion(args)
     if args.comando == "beat":
         return _comando_beat(args)
+    if args.comando == "voz":
+        return _comando_voz(args)
     parser.print_help()
     return 0
