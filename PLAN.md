@@ -251,9 +251,9 @@ Sale tu primer beat, en MIDI y en WAV, generado por el motor con un solo comando
 
 **Lista cuando**
 
-- [ ] El comando genera MIDI y WAV sin errores en tu PC
-- [ ] Los tests de teoría, patrones y MIDI pasan en CI
-- [ ] Escuchaste las variaciones y elegiste la base de tu canción
+- [x] El comando genera MIDI y WAV sin errores en tu PC
+- [x] Los tests de teoría, patrones y MIDI pasan en CI
+- [x] Escuchaste las variaciones y elegiste la base de tu canción
 
 ## Fase 2 — Coach de voz
 
