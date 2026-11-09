@@ -68,3 +68,16 @@ def test_las_capas_del_trap_suenan(pack, tmp_path):
         beat = crear_beat(pack, compases=1, humanizar=False, acordes=capa)
         render = renderizar(beat, tmp_path / f"{capa}.wav", sonidos, usar_surge=False)
         assert render.pico_db == pytest.approx(-1.0, abs=0.01)
+
+
+def test_las_tres_primeras_son_suaves(pack):
+    def fuerza(variacion, instrumento):
+        golpes = variacion.patrones[instrumento].golpes
+        return sum(g.velocidad for g in golpes) / len(golpes)
+
+    nombres = [v.nombre for v in pack.variaciones]
+    assert nombres[:3] == ["suave", "melodico", "nocturno"]
+    dura = pack.variaciones[nombres.index("oscuro")]
+    for suave in pack.variaciones[:3]:
+        assert fuerza(suave, "hihat") < fuerza(dura, "hihat")
+        assert fuerza(suave, "bombo") < fuerza(dura, "bombo")

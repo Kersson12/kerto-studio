@@ -1,16 +1,19 @@
 # Sonido de cada instrumento del trap cuando el beat se pasa a WAV.
 # surge: patch de fábrica de Surge XT · faust: voz interna de respaldo ·
 # nivel: pico de la pista en dBFS · agacha: baja cuando suena otra pista.
+#
+# Pensado suave y melódico: el bombo y la caja usan las voces internas, más
+# redondas que los patches de Surge, y los acordes van adelante.
 
-bombo: {surge: Percussion/Kick 909ish, faust: bombo, nivel: -5}
-caja: {surge: Percussion/Snare Tight, faust: caja, nivel: -6}
-hihat: {faust: hihat, nivel: -12}
-percusion: {faust: abierto, nivel: -16}
-808: {surge: Basses/Sub Square, faust: sub, nivel: -3, agacha: {con: bombo, db: 6, ms: 100}}
+bombo: {faust: bombo, nivel: -7}
+caja: {faust: caja, nivel: -10}
+hihat: {faust: hihat, nivel: -16}
+percusion: {faust: abierto, nivel: -19}
+808: {surge: Basses/Sub Square, faust: sub, nivel: -4, agacha: {con: bombo, db: 6, ms: 100}}
 
 # Capas de acordes.
-piano: {surge: Keys/Soft Suitcase, faust: teclado, nivel: -8}
-campana: {surge: Plucks/Bell 1, faust: pluck, nivel: -9}
-pad: {surge: Pads/MKS-70 Warm Pad, faust: pad, nivel: -10}
+piano: {surge: Keys/Soft Suitcase, faust: teclado, nivel: -5}
+campana: {surge: Plucks/Bell 1, faust: pluck, nivel: -7}
+pad: {surge: Pads/MKS-70 Warm Pad, faust: pad, nivel: -7}
 
 melodia: {faust: guia, nivel: -4}

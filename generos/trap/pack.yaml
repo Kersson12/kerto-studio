@@ -25,6 +25,39 @@ instrumentos:
   808: {grave: E1, largo: 1/2, programa: 38}
 
 variaciones:
+  # Las tres primeras son suaves y melódicas, como el trap más cantado:
+  # golpes suaves (o), casi sin redobles y con la melodía adelante.
+  - nombre: suave
+    descripcion: Suave y emotivo, batería tranquila para que mande la melodía.
+    progresion: i VI III VII # en Cm: Cm Ab Eb Bb
+    patrones:
+      bombo: "x....... ........ ..o..... ........"
+      caja: "........ ........ x....... ........"
+      hihat: "o...o... o...o... o...o... o.o.oooo"
+      percusion: "........ ........ ........ ........"
+      808: "x....... ........ ..o..... ........"
+
+  - nombre: melodico
+    descripcion: Melódico y con un rebote suave, para cantar encima.
+    progresion: i VII VI VII # en Cm: Cm Bb Ab Bb
+    patrones:
+      bombo: "x....... ..o..... ........ o......."
+      caja: "........ ........ x....... ........"
+      hihat: "o.o.o.o. o.o.o.o. o.o.o.o. o.o.oooo"
+      percusion: "....o... ........ ....o... ........"
+      808: "x....... ..o..... ........ o......."
+
+  - nombre: nocturno
+    descripcion: De noche y con mucho espacio, el 808 se sostiene largo.
+    progresion: i iv VI VII # en Cm: Cm Fm Ab Bb
+    patrones:
+      bombo: "x....... ........ ........ ..o....."
+      caja: "........ ........ x....... ........"
+      hihat: "....o... ....o... ....o... ..o.oooo"
+      percusion: "........ ........ ........ ........"
+      808: "x....... ........ o....... ........"
+
+  # Las dos últimas son más duras.
   - nombre: oscuro
     descripcion: Oscuro y con espacio, el 808 manda.
     progresion: i VI VII i # en Cm: Cm Ab Bb Cm
@@ -34,16 +67,6 @@ variaciones:
       hihat: "x...x... x...x... x...x... x.x.xxxx"
       percusion: "........ ........ ........ ....o..."
       808: "X....... ......x. ........ ........"
-
-  - nombre: melodico
-    descripcion: Melódico y con rebote, para cantar encima.
-    progresion: i VI III VII # en Cm: Cm Ab Eb Bb
-    patrones:
-      bombo: "X....... ..x..... ........ x......."
-      caja: "........ ........ X....... ........"
-      hihat: "x.x.x.x. x.x.x.x. x.x.x.x. x.x.xxxx"
-      percusion: "....o... ....o... ....o... ....o..."
-      808: "X....... ..x..... ........ x......."
 
   - nombre: rebote
     descripcion: Más movido, con bombo sincopado y hi-hat que se acelera.
@@ -56,10 +79,10 @@ variaciones:
       808: "X.....x. ...x.... ........ x.....x."
 
 transiciones:
-  # Al cerrar cada frase: el hi-hat se vuelve redoble y las palmas se doblan.
+  # Al cerrar cada frase: un redoble suave de hi-hat y palmas dobles.
   relleno:
-    caja: "........ ........ X....... ....x.x."
-    hihat: "x.x.x.x. x.x.x.x. xxxxxxxx XxXxXxXx"
+    caja: "........ ........ x....... ....o.o."
+    hihat: "o.o.o.o. o.o.o.o. o.o.oooo oooooooo"
   # Antes del coro: todo se calla en el último tiempo.
   corte:
     bombo: "X....... ........ ........ ........"

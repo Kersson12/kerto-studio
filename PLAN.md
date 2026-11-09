@@ -304,7 +304,7 @@ La canción entera queda armada: estructura, acordes, bajo, melodía guía dentr
 - [x] `kerto cancion render` genera el WAV guía y los MIDI por pista
 - [x] Un test garantiza que la melodía nunca sale de tu rango
 - [x] Un segundo pack de género genera una canción sin tocar el motor
-- [ ] Tienes la letra completa y aprobada
+- [x] Tienes la letra completa y aprobada
 - [ ] Te sabes la melodía del coro
 
 ## Fase 4 — Claude Code conectado: MCP, comandos y skills
