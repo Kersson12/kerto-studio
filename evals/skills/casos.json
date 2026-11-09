@@ -1,0 +1,38 @@
+[
+  {"pregunta": "el coro de luna-negra se siente muy alegre, quiero que suene más oscuro y con más tensión antes de volver, ¿qué acordes le pongo en el pack?", "debe": ["teoria-musical"], "no_debe": ["plugins-gratis", "coach-vocal"]},
+  {"pregunta": "¿por qué los acordes del beat dicen i VI III VII y no los nombres normales? no entiendo qué significan esos números", "debe": ["teoria-musical"], "no_debe": ["coach-vocal", "mezcla-y-master"]},
+  {"pregunta": "quiero pasar la canción de La menor a Sol menor, ¿cuánto baja eso y se va a escuchar muy distinto?", "debe": ["teoria-musical"], "no_debe": ["plugins-gratis", "mezcla-y-master"]},
+  {"pregunta": "en el precoro quiero algo que haga esperar el coro, como que pida que llegue, ¿qué progresión uso en generos/reggaeton/pack.yaml?", "debe": ["teoria-musical"], "no_debe": ["genero-trap", "coach-vocal"]},
+  {"pregunta": "que notas puedo cantar encima de Am F C G sin que suene feo? quiero improvisar unos ad libs en el outro", "debe": ["teoria-musical"], "no_debe": ["mezcla-y-master", "plugins-gratis"]},
+
+  {"pregunta": "acabo de grabar 3 tomas del coro de luna-negra, ¿desafino mucho? ¿necesito autotune?", "debe": ["coach-vocal"], "no_debe": ["genero-trap", "teoria-musical"]},
+  {"pregunta": "las pruebas de voz me salen 27% cantado y la otra dio distinto, ¿por qué cada análisis sale diferente?", "debe": ["coach-vocal"], "no_debe": ["mezcla-y-master", "plugins-gratis"]},
+  {"pregunta": "el informe dice temblor 11 cents y afinación 23 cents contra el beat, ¿eso es bueno o malo?", "debe": ["coach-vocal"], "no_debe": ["genero-reggaeton", "plugins-gratis"]},
+  {"pregunta": "quiero grabar mi voz encima del beat pero no sé cómo empezar ni qué comando usar, el micro es un usb barato", "debe": ["coach-vocal"], "no_debe": ["genero-trap", "teoria-musical"]},
+  {"pregunta": "¿en qué tono me conviene cantar según mi voz? siento que el coro me queda alto y me cuesta llegar", "debe": ["coach-vocal"], "no_debe": ["plugins-gratis", "mezcla-y-master"]},
+
+  {"pregunta": "mi voz suena muy metida atrás del beat y las eses pican, ¿cómo la dejo como de canción profesional?", "debe": ["mezcla-y-master"], "no_debe": ["genero-trap", "teoria-musical"]},
+  {"pregunta": "¿a cuántos LUFS tengo que dejar la canción para subirla a Spotify sin que suene aplastada?", "debe": ["mezcla-y-master"], "no_debe": ["coach-vocal", "teoria-musical"]},
+  {"pregunta": "el bombo y el 808 se pelean y suena todo embarrado en los bajos, ¿qué hago?", "debe": ["mezcla-y-master"], "no_debe": ["coach-vocal", "plugins-gratis"]},
+  {"pregunta": "le metí reverb al coro y suena como en un concierto, ¿cuánta reverb es normal para la voz?", "debe": ["mezcla-y-master"], "no_debe": ["teoria-musical", "genero-trap"]},
+  {"pregunta": "en generos/trap/sonidos.yaml el piano tapa la voz guía, ¿qué nivel le pongo para que se escuche la melodía?", "debe": ["mezcla-y-master"], "no_debe": ["coach-vocal", "genero-reggaeton"]},
+
+  {"pregunta": "¿qué autotune gratis puedo usar en Waveform? no quiero piratear el de Antares", "debe": ["plugins-gratis"], "no_debe": ["genero-reggaeton", "teoria-musical"]},
+  {"pregunta": "instalé Vital pero no me aparece en Waveform, ¿dónde se ponen los VST3 en windows?", "debe": ["plugins-gratis"], "no_debe": ["teoria-musical", "coach-vocal"]},
+  {"pregunta": "el resumen del beat dice sonido: Faust en vez de Surge XT, ¿por qué no está usando Surge?", "debe": ["plugins-gratis"], "no_debe": ["coach-vocal", "teoria-musical"]},
+  {"pregunta": "necesito una reverb buena y gratis para la voz, ¿cuál me recomiendas y de dónde la bajo?", "debe": ["plugins-gratis"], "no_debe": ["genero-trap", "teoria-musical"]},
+
+  {"pregunta": "hazme un perreo en La menor a 95", "accion": "mcp__kerto__crear_beat", "no_debe": ["genero-trap", "coach-vocal"]},
+  {"pregunta": "el beat 2 movido está bien pero quiero que se sienta más de discoteca, más oscuro, sin perder el dembow", "debe": ["genero-reggaeton"], "no_debe": ["genero-trap", "plugins-gratis"]},
+  {"pregunta": "escríbeme un coro de reggaetón para luna-negra, algo pegajoso de noche y que se repita", "debe": ["genero-reggaeton"], "no_debe": ["genero-trap", "mezcla-y-master"]},
+  {"pregunta": "quiero que el coro del reggaetón suene más lleno, con más melodía encima, ¿qué capas tiene el pack?", "debe": ["genero-reggaeton"], "no_debe": ["plugins-gratis", "genero-trap"]},
+  {"pregunta": "en el pack de reggaeton el hihat del movido suena muy apurado, ¿cómo lo cambio?", "debe": ["genero-reggaeton"], "no_debe": ["coach-vocal", "genero-trap"]},
+
+  {"pregunta": "hazme un trap suave y melódico para cantar encima, nada muy duro", "debe": ["genero-trap"], "no_debe": ["genero-reggaeton", "coach-vocal"]},
+  {"pregunta": "¿por qué el trap a 140 se siente lento? pensé que iba a ir más rápido que el reggaetón", "debe": ["genero-trap"], "no_debe": ["plugins-gratis", "coach-vocal"]},
+  {"pregunta": "quiero redobles de hi-hat más locos al final del compás en el trap rebote, ¿cómo edito el patrón?", "debe": ["genero-trap"], "no_debe": ["genero-reggaeton", "coach-vocal"]},
+  {"pregunta": "escribe un verso de trap de 16 compases sobre salir adelante desde el barrio", "debe": ["genero-trap"], "no_debe": ["genero-reggaeton", "mezcla-y-master"]},
+
+  {"pregunta": "corre los tests y dime si algo falla", "no_debe": ["teoria-musical", "coach-vocal", "mezcla-y-master", "plugins-gratis", "genero-reggaeton", "genero-trap"]},
+  {"pregunta": "¿cómo va luna-negra? dame el estado de la canción", "no_debe": ["plugins-gratis", "mezcla-y-master", "genero-trap", "coach-vocal"]}
+]

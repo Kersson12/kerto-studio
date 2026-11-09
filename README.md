@@ -4,7 +4,18 @@ Kerto convierte a [Claude Code](https://claude.com/claude-code) en un equipo de 
 
 *Kerto turns Claude Code into a free, open source music production team: beats, vocal coaching, autotune advice, mixing and mastering. English docs arrive with v0.1.*
 
-**Estado:** en construcción, Fase 3 de [PLAN.md](PLAN.md) (canción completa).
+**Estado:** en construcción, Fase 4 de [PLAN.md](PLAN.md) (Claude Code conectado).
+
+## Hablarle a tu equipo
+
+Abre la carpeta en Claude Code y la primera vez aprueba el servidor MCP `kerto` (está en `.mcp.json`). Después pídelo en lenguaje normal:
+
+- "hazme un perreo en La menor a 95" crea el beat sin escribir comandos.
+- `/nueva-cancion perreo oscuro de discoteca` arma una canción nueva con su `cancion.yaml`.
+- `/analiza-mi-voz luna-negra` revisa tus tomas y te dice qué autotune usar.
+- `/mezcla luna-negra` mezcla y masteriza (llega en la Fase 5).
+
+El equipo está en `.claude/agents/`: productor, coach-vocal, letrista, ingeniero-mezcla y critico-ar. Las skills de `.claude/skills/` les enseñan teoría, voz, mezcla, plugins gratis y cada género. Para comprobar que las skills se activan cuando toca: `uv run python evals/skills/probar_activacion.py` (usa sesiones reales de Claude).
 
 ## Primer beat
 
