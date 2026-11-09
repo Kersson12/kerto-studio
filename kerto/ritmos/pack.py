@@ -65,6 +65,18 @@ class Variacion:
 
 
 @dataclass(frozen=True)
+class CapaAcordes:
+    """Capa que toca la progresión: acordes enteros o, con arpegio, nota por nota."""
+
+    nombre: str
+    patron: Patron
+    octava: int
+    largo: Fraction = LARGO_POR_DEFECTO
+    programa: int | None = None
+    arpegio: bool = False
+
+
+@dataclass(frozen=True)
 class Pack:
     """Todo lo que el motor necesita saber de un género."""
 
@@ -82,6 +94,7 @@ class Pack:
     instrumentos: dict[str, Instrumento]
     variaciones: tuple[Variacion, ...]
     transiciones: dict[str, dict[str, Patron]]
+    acordes: dict[str, CapaAcordes]
 
     @property
     def largo_compas(self) -> Fraction:
@@ -151,6 +164,7 @@ def _armar_pack(datos: dict[str, Any]) -> Pack:
         instrumentos=instrumentos,
         variaciones=_variaciones(datos["variaciones"], patrones, tonalidad),
         transiciones=_transiciones(datos.get("transiciones") or {}, patrones),
+        acordes=_capas(datos.get("acordes") or {}, patrones),
     )
 
 
@@ -226,12 +240,46 @@ def _instrumento(nombre: str, datos: object) -> Instrumento:
     except ErrorNotacion as error:
         raise ErrorPack(f"instrumento {nombre!r}: {error}") from error
     largo = _fraccion(datos.get("largo", LARGO_POR_DEFECTO), f"largo de {nombre!r}")
+    return Instrumento(nombre, nota, grave, largo, _programa(datos, nombre))
+
+
+def _programa(datos: dict, nombre: str) -> int | None:
     programa = datos.get("programa")
     if programa is not None and (
         not isinstance(programa, int) or not 0 <= programa <= 127
     ):
         raise ErrorPack(f"programa de {nombre!r} debe ir de 0 a 127, no {programa!r}")
-    return Instrumento(nombre, nota, grave, largo, programa)
+    return programa
+
+
+def _capas(datos: object, patrones: "_LectorDePatrones") -> dict[str, CapaAcordes]:
+    """Capas de acordes opcionales: pad, teclado, arpegio..."""
+    if not isinstance(datos, dict):
+        raise ErrorPack("acordes debe ser un mapa nombre: capa")
+    capas = {}
+    for clave, valor in datos.items():
+        nombre = str(clave)
+        donde = f"la capa de acordes {nombre!r}"
+        if not isinstance(valor, dict) or "patron" not in valor:
+            raise ErrorPack(f'{donde} necesita un patron, como {{patron: "X..."}}')
+        if nombre in patrones.instrumentos:
+            raise ErrorPack(f"{donde} se llama igual que un instrumento")
+        patron = patrones.patron(nombre, str(valor["patron"]), donde, un_compas=False)
+        octava = valor.get("octava", 4)
+        if (
+            not isinstance(octava, int)
+            or isinstance(octava, bool)
+            or not 1 <= octava <= 7
+        ):
+            raise ErrorPack(f"octava de {nombre!r} debe ir de 1 a 7, no {octava!r}")
+        largo = _fraccion(valor.get("largo", LARGO_POR_DEFECTO), f"largo de {nombre!r}")
+        arpegio = valor.get("arpegio", False)
+        if not isinstance(arpegio, bool):
+            raise ErrorPack(f"arpegio de {nombre!r} debe ser true o false")
+        capas[nombre] = CapaAcordes(
+            nombre, patron, octava, largo, _programa(valor, nombre), arpegio
+        )
+    return capas
 
 
 class _LectorDePatrones:
@@ -257,10 +305,10 @@ class _LectorDePatrones:
                 raise ErrorPack(
                     f"{donde} usa el instrumento {nombre!r}, que no está en instrumentos"
                 )
-            patrones[nombre] = self._patron(nombre, str(texto), donde, un_compas)
+            patrones[nombre] = self.patron(nombre, str(texto), donde, un_compas)
         return patrones
 
-    def _patron(self, nombre: str, texto: str, donde: str, un_compas: bool) -> Patron:
+    def patron(self, nombre: str, texto: str, donde: str, un_compas: bool) -> Patron:
         try:
             patron = parse_patron(texto, self.paso)
         except ErrorNotacion as error:

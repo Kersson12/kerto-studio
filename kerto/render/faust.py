@@ -30,6 +30,16 @@ VOCES: dict[str, str] = {
     # Sub para el 808: seno saturado que se sostiene mientras dura la nota.
     "sub": "process = os.osc(freq) * (gate : si.smooth(ba.tau2pole(0.005)))"
     " * (0.6 + 0.4 * caida(0.6)) * gain * 1.6 : ma.tanh <: _, _;",
+    # Pad: dos sierras apenas desafinadas, filtradas y con entrada lenta.
+    "pad": "process = (os.sawtooth(freq) + os.sawtooth(freq * 1.006)) * 0.5"
+    " : fi.lowpass(2, 1600) * (gate : si.smooth(ba.tau2pole(0.25))) * gain * 0.5"
+    " <: _, _;",
+    # Teclado: piano eléctrico simple, con armónicos que se apagan.
+    "teclado": "process = (os.osc(freq) + 0.3 * os.osc(2 * freq) + 0.1 * os.osc(3 * freq))"
+    " * caida(1.2) * (gate : si.smooth(ba.tau2pole(0.02))) * gain * 0.5 <: _, _;",
+    # Pluck: sierra con filtro que se cierra rápido, para arpegios.
+    "pluck": "process = os.sawtooth(freq) : fi.lowpass(2, 700 + 4000 * caida(0.15))"
+    " * caida(0.5) * gain * 0.5 <: _, _;",
 }
 
 

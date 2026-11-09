@@ -338,3 +338,12 @@ def test_playrec_con_la_guia(monkeypatch):
     assert muestra._grabar_con_sounddevice(1, 1000, 3, guia).shape == (1, 1000)
     assert muestra._grabar_con_sounddevice(1, 1000, None, guia).shape == (1, 1000)
     assert llamadas == [(3, None), None]
+
+
+def test_nombre_de_la_salida_sin_portaudio(monkeypatch):
+    import sys
+
+    from kerto.voz import muestra
+
+    monkeypatch.setitem(sys.modules, "sounddevice", None)
+    assert muestra._nombre_salida() == "la salida de audio por defecto"

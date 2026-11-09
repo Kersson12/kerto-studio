@@ -317,6 +317,17 @@ def _entradas() -> list[tuple[int, str, bool]]:
     ]
 
 
+def _nombre_salida() -> str:
+    """Dónde va a sonar el beat: la salida de audio por defecto."""
+    try:
+        import sounddevice
+
+        dispositivo = sounddevice.query_devices(sounddevice.default.device[1])
+        return " ".join(dispositivo["name"].split())
+    except Exception:  # noqa: BLE001 - es solo un aviso; sin PortAudio no hay nombre
+        return "la salida de audio por defecto"
+
+
 def listar_entradas() -> list[str]:
     """Micrófonos disponibles, uno por línea, marcando el que se usa por defecto."""
     return [
@@ -356,6 +367,7 @@ def grabar_muestra(
             "Ponte audífonos: el beat va a sonar y no debe entrar al micrófono."
             " Canta encima, como si fuera la canción."
         )
+        avisar(f"El beat suena por: {_nombre_salida()}")
     else:
         avisar(
             "Canta algo cómodo: una canción que te sepas, o de tu nota más grave"

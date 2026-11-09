@@ -36,6 +36,7 @@ def generar_beats(
     compases: int = COMPASES_POR_DEFECTO,
     variaciones: int = VARIACIONES_POR_DEFECTO,
     variacion: str | None = None,
+    acordes: str | None = None,
     semilla: int = 0,
     salida: Path = SALIDA_POR_DEFECTO,
     wav: bool = True,
@@ -46,7 +47,8 @@ def generar_beats(
     """Crea las variaciones y escribe beat-N-nombre-tonalidad.mid (y .wav).
 
     Con `variacion`, solo esa: así se transpone la base a otra tonalidad con el
-    mismo ritmo y la misma humanización (misma semilla).
+    mismo ritmo y la misma humanización (misma semilla). Con `acordes`, suma
+    esa capa de acordes del pack y el nombre termina en -<capa>.
     """
     pack = cargar_pack(genero, carpeta=carpeta)
     indices = _indices(
@@ -60,13 +62,15 @@ def generar_beats(
             tonalidad=tonalidad,
             compases=compases,
             semilla=semilla,
+            acordes=acordes,
         )
         for indice in indices
     )
     sonidos = cargar_sonidos(genero, carpeta=carpeta) if wav else {}
     extensiones = (".mid", ".wav") if wav else (".mid",)
+    capa = f"-{acordes}" if acordes else ""
     bases = [
-        salida / f"beat-{indice + 1}-{beat.variacion}-{beat.tonalidad}"
+        salida / f"beat-{indice + 1}-{beat.variacion}-{beat.tonalidad}{capa}"
         for indice, beat in zip(indices, beats, strict=True)
     ]
     archivos = tuple(base.with_suffix(ext) for base in bases for ext in extensiones)

@@ -9,7 +9,10 @@ import sys
 from pathlib import Path
 
 from kerto import __version__
+from kerto.cancion.archivo import ErrorCancion, beat_base
 from kerto.notacion import ErrorNotacion, parse_secuencia, resumir_secuencia
+
+_BEAT_BASE = Path("<beat base de la canción>")  # --con-beat sin archivo
 
 
 def crear_parser() -> argparse.ArgumentParser:
@@ -51,7 +54,10 @@ def _agregar_voz(comandos: argparse._SubParsersAction) -> None:
     grabar.add_argument(
         "--con-beat",
         type=Path,
-        help="WAV que suena en los audífonos mientras cantas (la referencia)",
+        nargs="?",
+        const=_BEAT_BASE,
+        help="WAV que suena en los audífonos mientras cantas; sin archivo,"
+        " el beat base de la canción",
     )
     analizar = acciones.add_parser(
         "analizar", help="analiza una o varias tomas; varias se combinan"
@@ -88,10 +94,15 @@ def _comando_voz(args: argparse.Namespace) -> int:
         referencia = None
         if args.accion == "grabar":
             carpeta = args.salida or voz.carpeta_de_cancion(args.cancion or "borrador")
+            guia = args.con_beat
+            if guia is _BEAT_BASE:
+                if not args.cancion:
+                    raise ErrorVoz("--con-beat sin archivo necesita --cancion <nombre>")
+                guia = beat_base(args.cancion)
             archivo = voz.grabar_muestra(
-                carpeta, args.segundos, args.dispositivo, beat=args.con_beat
+                carpeta, args.segundos, args.dispositivo, beat=guia
             )
-            referencia = args.con_beat.name if args.con_beat else None
+            referencia = guia.name if guia else None
             rutas = [archivo]
         else:
             rutas = list(args.archivos)
@@ -104,7 +115,7 @@ def _comando_voz(args: argparse.Namespace) -> int:
         resultado = voz.analizar_muestra(*voz.leer_audio(rutas[0]))
         autotune = recomendar_autotune(resultado.informe, args.exigencia, args.estilo)
         informe = voz.guardar_informe(resultado, rutas[0], autotune, referencia)
-    except ErrorVoz as error:
+    except (ErrorVoz, ErrorCancion) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
     consejos = " · ".join(resultado.consejos) or "la grabación está limpia"
@@ -150,6 +161,9 @@ def _agregar_beat(comandos: argparse._SubParsersAction) -> None:
     beat.add_argument(
         "--variacion", help="solo esta versión, por ejemplo movido (para transponer)"
     )
+    beat.add_argument(
+        "--acordes", help="suma una capa de acordes del pack: pad, teclado o arpegio"
+    )
     beat.add_argument("--semilla", type=int, default=0, help="azar de la humanización")
     beat.add_argument(
         "--salida",
@@ -177,6 +191,7 @@ def _comando_beat(args: argparse.Namespace) -> int:
             compases=args.compases,
             variaciones=args.variaciones,
             variacion=args.variacion,
+            acordes=args.acordes,
             semilla=args.semilla,
             salida=args.salida,
             wav=not args.sin_wav,

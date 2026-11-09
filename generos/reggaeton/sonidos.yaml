@@ -15,3 +15,8 @@ caja: {surge: Percussion/Snare Tight, faust: caja, nivel: -6}
 hihat: {faust: hihat, nivel: -12}
 percusion: {faust: conga, nivel: -12}
 808: {surge: Basses/Sub Square, faust: sub, nivel: -5}
+
+# Capas de acordes (opcionales).
+pad: {surge: Pads/Ghost Pad, faust: pad, nivel: -14}
+teclado: {surge: Keys/EP 1, faust: teclado, nivel: -12}
+arpegio: {surge: Plucks/Nice Pluck 1, faust: pluck, nivel: -13}

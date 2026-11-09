@@ -324,3 +324,99 @@ def test_humanizar_no_solapa_notas_del_mismo_tono(pack):
                 if actual.tono == siguiente.tono:
                     assert actual.inicio + actual.duracion <= siguiente.inicio
                 assert actual.duracion > 0
+
+
+# --- Capa de acordes ---
+
+CAPAS = """
+acordes:
+  pad: {patron: "X... .... .... ....", octava: 3, largo: 1, programa: 89}
+  teclado: {patron: "x..x ..x. x..x ..x.", octava: 4, largo: 1/8}
+  arpegio: {patron: "x.x. x.x. x.x. x.x.", octava: 4, largo: 1/8, arpegio: true}
+"""
+
+
+@pytest.fixture
+def pack_con_acordes(tmp_path):
+    return cargar_pack("prueba", carpeta=escribir_pack(tmp_path, PACK_PRUEBA + CAPAS))
+
+
+def test_cargar_capas_de_acordes(pack_con_acordes):
+    capas = pack_con_acordes.acordes
+    assert list(capas) == ["pad", "teclado", "arpegio"]
+    assert (capas["pad"].octava, capas["pad"].largo, capas["pad"].programa) == (
+        3,
+        1,
+        89,
+    )
+    assert capas["arpegio"].arpegio and not capas["pad"].arpegio
+    assert capas["teclado"].patron.pasos == 16
+
+
+def test_el_pack_sin_acordes_no_tiene_capas(pack):
+    assert pack.acordes == {}
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "mensaje"),
+    [
+        (
+            'patron: "X... .... .... ....", octava: 3',
+            'patron: "X...", octava: 3',
+            "pad",
+        ),
+        ("octava: 3, largo: 1", "octava: 9, largo: 1", "octava"),
+        ("arpegio: true", "arpegio: 3", "arpegio"),
+        ("  teclado: {", "  teclado: 5\n  otro: {", "teclado"),
+        ("acordes:\n", "acordes: 5\nviejo:\n", "mapa"),
+        ("  pad: {", "  bombo: {", "instrumento"),
+    ],
+)
+def test_capas_invalidas(tmp_path, viejo, nuevo, mensaje):
+    escribir_pack(tmp_path, PACK_PRUEBA + CAPAS.replace(viejo, nuevo, 1))
+    with pytest.raises(ErrorPack, match=mensaje):
+        cargar_pack("prueba", carpeta=tmp_path)
+
+
+def test_pad_toca_los_acordes_de_la_progresion(pack_con_acordes):
+    beat = crear_beat(pack_con_acordes, acordes="pad", compases=2, humanizar=False)
+    pad = next(p for p in beat.pistas if p.nombre == "pad")
+    assert (pad.bateria, pad.programa) == (False, 89)
+    por_inicio = {}
+    for nota in pad.notas:
+        por_inicio.setdefault(nota.inicio, []).append(nota.tono)
+    assert por_inicio == {R(0): [57, 60, 64], R(1): [53, 57, 60]}  # Am y F
+    assert {n.duracion for n in pad.notas} == {R(1)}
+
+
+def test_en_el_corte_los_acordes_se_callan_en_el_ultimo_tiempo(pack_con_acordes):
+    beat = crear_beat(pack_con_acordes, acordes="pad", compases=4, humanizar=False)
+    pad = next(p for p in beat.pistas if p.nombre == "pad")
+    ultimo = [n for n in pad.notas if n.inicio >= 3]
+    assert ultimo and all(n.inicio + n.duracion <= R(3) + R(3, 4) for n in ultimo)
+    teclado = crear_beat(
+        pack_con_acordes, acordes="teclado", compases=4, humanizar=False
+    )
+    golpes = next(p for p in teclado.pistas if p.nombre == "teclado").notas
+    assert all(n.inicio < R(3) + R(3, 4) for n in golpes)
+
+
+def test_teclado_marca_el_acorde_en_cada_golpe(pack_con_acordes):
+    beat = crear_beat(pack_con_acordes, acordes="teclado", compases=1, humanizar=False)
+    teclado = next(p for p in beat.pistas if p.nombre == "teclado").notas
+    assert len(teclado) == 6 * 3
+    assert {n.tono for n in teclado} == {69, 72, 76}  # A4 C5 E5
+    assert {n.duracion for n in teclado} == {R(1, 8)}
+
+
+def test_arpegio_recorre_el_acorde_nota_por_nota(pack_con_acordes):
+    beat = crear_beat(pack_con_acordes, acordes="arpegio", compases=1, humanizar=False)
+    arpegio = next(p for p in beat.pistas if p.nombre == "arpegio").notas
+    assert [n.tono for n in arpegio] == [69, 72, 76, 81] * 2
+
+
+def test_sin_acordes_no_hay_capa_y_capa_desconocida_falla(pack_con_acordes):
+    nombres = [p.nombre for p in crear_beat(pack_con_acordes, humanizar=False).pistas]
+    assert nombres == ["bombo", "caja", "808"]
+    with pytest.raises(ErrorBeat, match="pad, teclado, arpegio"):
+        crear_beat(pack_con_acordes, acordes="violin")

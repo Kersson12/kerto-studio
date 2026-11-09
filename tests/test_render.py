@@ -125,7 +125,8 @@ def test_escribir_wav_rechaza_audio_que_no_es_canales_por_muestras(tmp_path):
 
 def test_sonidos_del_reggaeton_cubren_todos_los_instrumentos():
     sonidos = cargar_sonidos("reggaeton")
-    assert list(sonidos) == list(cargar_pack("reggaeton").instrumentos)
+    pack = cargar_pack("reggaeton")
+    assert list(sonidos) == [*pack.instrumentos, *pack.acordes]
     assert all(s.faust in VOCES for s in sonidos.values())
     assert all(s.nivel <= 0 for s in sonidos.values())
     assert sonidos["808"].surge == "Basses/Sub Square"
@@ -200,4 +201,15 @@ def test_render_con_surge_xt(beat_corto, tmp_path):
     render = renderizar(beat_corto, tmp_path / "beat.wav", cargar_sonidos("reggaeton"))
     assert render.motores["808"] == "surge"
     assert render.motores["hihat"] == "faust"
+    assert render.pico_db == pytest.approx(-1.0, abs=0.01)
+
+
+@pytest.mark.parametrize("capa", ["pad", "teclado", "arpegio"])
+def test_render_de_cada_capa_de_acordes(capa, tmp_path):
+    beat = crear_beat(
+        cargar_pack("reggaeton"), "movido", compases=1, humanizar=False, acordes=capa
+    )
+    sonidos = cargar_sonidos("reggaeton")
+    render = renderizar(beat, tmp_path / "beat.wav", sonidos, usar_surge=False)
+    assert render.motores[capa] == "faust"
     assert render.pico_db == pytest.approx(-1.0, abs=0.01)

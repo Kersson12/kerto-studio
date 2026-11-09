@@ -134,3 +134,14 @@ def test_beat_transpone_una_sola_variacion(tmp_path, capsys):
     assert [n + 3 for n in en_am["808"]] == en_cm["808"]
     for instrumento in ("bombo", "caja", "hihat", "percusion"):
         assert en_am[instrumento] == en_cm[instrumento]
+
+
+def test_beat_con_capa_de_acordes(tmp_path, capsys):
+    import mido
+
+    assert beat(tmp_path, "--variacion", "movido", "--acordes", "pad", "--sin-wav") == 0
+    archivo = tmp_path / "beats" / "beat-2-movido-Am-pad.mid"
+    assert [p.name for p in mido.MidiFile(archivo).tracks[1:]][-1] == "pad"
+    assert "beat-2-movido-Am-pad" in capsys.readouterr().out
+    assert beat(tmp_path, "--acordes", "violin", "--sin-wav") == 1
+    assert "pad, teclado, arpegio" in capsys.readouterr().err

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import librosa
 import numpy as np
 
-from kerto.notacion import midi_a_nota
+from kerto.notacion import midi_a_nota, nota_a_midi
 
 FRECUENCIA_ANALISIS = 22050
 NOTA_MINIMA = "C2"  # 65 Hz: más grave que casi cualquier voz
@@ -213,8 +213,16 @@ def notas_sostenidas(tono: Tono) -> list[np.ndarray]:
     return [
         np.array(tramo[RECORTE_BORDE:-RECORTE_BORDE])
         for tramo in tramos
-        if len(tramo) >= minimo and _es_plano(tramo)
+        if len(tramo) >= minimo and _es_plano(tramo) and _lejos_del_limite(tramo)
     ]
+
+
+def _lejos_del_limite(tramo: list[float]) -> bool:
+    """Una nota pegada al límite del detector (C2 o C6) casi siempre es ruido."""
+    centro = float(np.median(tramo))
+    grave = (nota_a_midi(NOTA_MINIMA) + 1) * 100
+    aguda = (nota_a_midi(NOTA_MAXIMA) - 1) * 100
+    return grave < centro < aguda
 
 
 def _es_plano(tramo: list[float]) -> bool:

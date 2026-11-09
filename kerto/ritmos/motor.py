@@ -13,7 +13,7 @@ from dataclasses import dataclass, replace
 from fractions import Fraction
 
 from kerto.notacion import Golpe, Patron, duracion_compas
-from kerto.ritmos.pack import Instrumento, Pack, Variacion
+from kerto.ritmos.pack import CapaAcordes, Instrumento, Pack, Variacion
 from kerto.teoria.acordes import Acorde, parse_tonalidad
 from kerto.teoria.acordes import progresion as _progresion
 from kerto.teoria.escalas import ErrorTeoria, clase_de_altura
@@ -95,8 +95,12 @@ def crear_beat(
     progresion: str | None = None,
     semilla: int = 0,
     humanizar: bool = True,
+    acordes: str | None = None,
 ) -> Beat:
-    """Arma el beat de una variación del pack (por posición desde 0 o por nombre)."""
+    """Arma el beat de una variación del pack (por posición desde 0 o por nombre).
+
+    `acordes` suma una capa de acordes del pack (pad, teclado, arpegio...).
+    """
     elegida = _elegir_variacion(pack, variacion)
     tempo = pack.bpm_defecto if bpm is None else bpm
     if not BPM_MINIMO <= tempo <= BPM_MAXIMO:
@@ -104,25 +108,25 @@ def crear_beat(
             f"bpm {tempo} fuera de rango: usa de {BPM_MINIMO} a {BPM_MAXIMO}"
         )
     tipos = estructura(compases, pack.frase)
-    clave, acordes = _acordes(
+    clave, por_compas = _acordes(
         tonalidad or pack.tonalidad, progresion or elegida.progresion, compases
     )
+    capa = _elegir_capa(pack, acordes)
+    crudas = [
+        (i.nombre, i.bateria, i.programa, _notas(pack, i, elegida, tipos, por_compas))
+        for i in pack.instrumentos.values()
+    ]
+    if capa is not None:
+        notas_capa = _notas_capa(pack, capa, tipos, por_compas)
+        crudas.append((capa.nombre, False, capa.programa, notas_capa))
     pistas = []
-    for instrumento in pack.instrumentos.values():
-        notas = _notas(pack, instrumento, elegida, tipos, acordes)
+    for nombre, bateria, programa, notas in crudas:
         if humanizar:
-            azar = random.Random(f"{semilla}:{elegida.nombre}:{instrumento.nombre}")
+            azar = random.Random(f"{semilla}:{elegida.nombre}:{nombre}")
             notas = _humanizar(
                 notas, azar, pack.humanizar_tiempo, pack.humanizar_fuerza
             )
-        pistas.append(
-            Pista(
-                instrumento.nombre,
-                instrumento.bateria,
-                instrumento.programa,
-                _sin_solapes(notas),
-            )
-        )
+        pistas.append(Pista(nombre, bateria, programa, _sin_solapes(notas)))
     return Beat(
         genero=pack.nombre,
         variacion=elegida.nombre,
@@ -130,9 +134,49 @@ def crear_beat(
         tonalidad=clave,
         compas=pack.compas,
         compases=compases,
-        acordes=tuple(str(acorde) for acorde in acordes),
+        acordes=tuple(str(acorde) for acorde in por_compas),
         pistas=tuple(pistas),
     )
+
+
+def _elegir_capa(pack: Pack, nombre: str | None) -> CapaAcordes | None:
+    if nombre is None:
+        return None
+    if nombre not in pack.acordes:
+        disponibles = ", ".join(pack.acordes) or "ninguna"
+        raise ErrorBeat(f"capa de acordes desconocida {nombre!r}: usa {disponibles}")
+    return pack.acordes[nombre]
+
+
+def _notas_capa(
+    pack: Pack, capa: CapaAcordes, tipos: tuple[str, ...], acordes: tuple[Acorde, ...]
+) -> list[Nota]:
+    """La progresión con el ritmo de la capa.
+
+    En el corte se calla en el último tiempo, igual que la batería.
+    """
+    largo = pack.largo_compas
+    corte = largo - largo / int(pack.compas.split("/")[0])
+    golpes = []
+    for indice, tipo in enumerate(tipos):
+        for orden, golpe in enumerate(_golpes_del_compas(capa.patron, indice, largo)):
+            if tipo == "corte" and golpe.inicio >= corte:
+                continue
+            golpes.append(
+                (indice * largo + golpe.inicio, golpe.velocidad, indice, orden)
+            )
+    notas = []
+    for k, (inicio, velocidad, indice, orden) in enumerate(golpes):
+        siguiente = golpes[k + 1][0] if k + 1 < len(golpes) else len(tipos) * largo
+        fin = min(siguiente, inicio + capa.largo)
+        if tipos[indice] == "corte":
+            fin = min(fin, indice * largo + corte)
+        tonos = acordes[indice].midi(capa.octava)
+        if capa.arpegio:
+            ciclo = (*tonos, tonos[0] + 12)
+            tonos = (ciclo[orden % len(ciclo)],)
+        notas.extend(Nota(inicio, fin - inicio, tono, velocidad) for tono in tonos)
+    return notas
 
 
 def _elegir_variacion(pack: Pack, variacion: int | str) -> Variacion:

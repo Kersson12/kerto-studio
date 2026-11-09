@@ -251,3 +251,8 @@ def test_resumen_avisa_si_las_notas_no_caen_en_una_escala():
     alturas = 220 * 2 ** (azar.uniform(0, 12, 40) / 12)
     informe = analizar_voz(voz_contorno([(0.25, hz, hz) for hz in alturas]), SR)
     assert "no caen en una escala fija" in resumir_informe(informe)
+
+
+def test_las_notas_pegadas_al_limite_del_detector_son_ruido():
+    informe = analizar_voz(voz_sintetica([66.0, 220.0], segundos=1.5), SR)
+    assert informe.nota_grave == "A3"

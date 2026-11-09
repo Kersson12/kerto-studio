@@ -73,3 +73,15 @@ transiciones:
     hihat: "x.o. x.o. x.o. ...."
     percusion: ".... .... .... ...."
     808: "X..x ..x. .... ...."
+
+# Capas de acordes opcionales: tocan la progresión de la variación (kerto beat
+# --acordes pad). Le dan melodía al beat y una referencia para cantar afinado.
+# patron: ritmo de los acordes · octava: altura del acorde · largo: lo máximo
+# que se sostiene · arpegio: true toca las notas del acorde una por una.
+acordes:
+  # Acordes largos y oscuros, uno por compás. programa 89 = Pad 2 (GM, desde 0).
+  pad: {patron: "X... .... .... ....", octava: 3, largo: 1, programa: 89}
+  # Piano eléctrico que marca los acordes con el ritmo del dembow. programa 4 = EP.
+  teclado: {patron: "x..x ..x. x..x ..x.", octava: 4, largo: 1/8, programa: 4}
+  # Notas del acorde saltando en corcheas. programa 81 = Lead 2 (GM, desde 0).
+  arpegio: {patron: "x.x. x.x. x.x. x.x.", octava: 4, largo: 1/8, programa: 81, arpegio: true}
