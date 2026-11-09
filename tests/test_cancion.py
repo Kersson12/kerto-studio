@@ -71,3 +71,11 @@ def test_con_beat_sin_cancion_explica_el_error(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert main(["voz", "grabar", "--con-beat"]) == 1
     assert "--cancion" in capsys.readouterr().err
+
+
+def test_cancion_yaml_mal_escrito_explica_la_linea(cancion):
+    (cancion / "cancion.yaml").write_text(
+        "nombre: Luna\nletra:\n  estado: borrador 2: verso\n", encoding="utf-8"
+    )
+    with pytest.raises(ErrorCancion, match="línea 3"):
+        leer_cancion("luna")

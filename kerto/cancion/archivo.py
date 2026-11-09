@@ -29,7 +29,15 @@ def leer_cancion(nombre: str) -> dict[str, Any]:
     ruta = carpeta_cancion(nombre) / ARCHIVO_CANCION
     if not ruta.is_file():
         raise ErrorCancion(f"no existe {ruta.as_posix()}")
-    datos = yaml.safe_load(ruta.read_text(encoding="utf-8"))
+    try:
+        datos = yaml.safe_load(ruta.read_text(encoding="utf-8"))
+    except yaml.YAMLError as error:
+        marca = getattr(error, "problem_mark", None)
+        donde = f" (línea {marca.line + 1})" if marca else ""
+        raise ErrorCancion(
+            f"{ruta.as_posix()} está mal escrito{donde}: si un texto lleva"
+            ' dos puntos, ponlo entre comillas, como estado: "borrador 2: verso"'
+        ) from error
     if not isinstance(datos, dict):
         raise ErrorCancion(f"{ruta.as_posix()} debe ser un mapa de claves")
     return datos
