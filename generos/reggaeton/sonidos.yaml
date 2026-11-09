@@ -5,7 +5,8 @@
 # faust: voz del sintetizador interno de Kerto: bombo, caja, hihat, conga o sub.
 # agacha: baja la pista cuando suena otra (el 808 con el bombo, para que no
 #        choquen): con = la otra pista, db = cuánto baja, ms = cuánto tarda en volver.
-# sala: cuánto suena en la reverb de sala, de 0 a 1 (bombo y 808 van secos).
+# sala: cuánto suena en la reverb de sala, de 0 a 1. En reggaetón va apagada:
+#       con sala el coro sonaba a concierto y no pegaba (Luna Negra).
 # nivel: pico de la pista en dBFS antes de mezclar (0 es el máximo; más
 #        negativo suena más bajo).
 #
@@ -14,15 +15,15 @@
 # parlantes de laptop o de teléfono; Sub Square suma armónicos entre 80 y 300 Hz.
 
 bombo: {surge: Percussion/Kick 909ish, faust: bombo, nivel: -4}
-caja: {surge: Percussion/Snare Tight, faust: caja, nivel: -6, sala: 0.3}
-hihat: {faust: hihat, nivel: -12, sala: 0.1}
-percusion: {faust: conga, nivel: -12, sala: 0.2}
+caja: {surge: Percussion/Snare Tight, faust: caja, nivel: -6}
+hihat: {faust: hihat, nivel: -12}
+percusion: {faust: conga, nivel: -12}
 808: {surge: Basses/Sub Square, faust: sub, nivel: -5, agacha: {con: bombo, db: 8, ms: 120}}
 
 # Capas de acordes (opcionales).
-pad: {surge: Pads/Ghost Pad, faust: pad, nivel: -8, sala: 0.4}
-teclado: {surge: Keys/EP 1, faust: teclado, nivel: -7, sala: 0.25}
-arpegio: {surge: Plucks/Nice Pluck 1, faust: pluck, nivel: -7, sala: 0.35}
+pad: {surge: Pads/MKS-70 Warm Pad, faust: pad, nivel: -8}
+teclado: {surge: Keys/EP 1, faust: teclado, nivel: -7}
+arpegio: {surge: Plucks/Nice Pluck 1, faust: pluck, nivel: -7}
 
 # Melodía guía de la canción (kerto cancion render): suave y clara, para cantar encima.
-melodia: {faust: guia, nivel: -4, sala: 0.25}
+melodia: {faust: guia, nivel: -4}

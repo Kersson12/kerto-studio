@@ -54,10 +54,15 @@ def test_masterizar_sube_el_volumen_sin_pasar_el_techo():
     assert np.all(masterizar(np.zeros((2, 100)), SR) == 0)
 
 
-def test_sonidos_con_sala():
-    sonidos = cargar_sonidos("reggaeton")
-    assert sonidos["bombo"].sala == 0 and sonidos["808"].sala == 0
-    assert sonidos["caja"].sala > 0 and sonidos["pad"].sala > sonidos["hihat"].sala
+def test_el_reggaeton_va_seco_y_la_sala_se_lee_de_sonidos(tmp_path):
+    assert all(s.sala == 0 for s in cargar_sonidos("reggaeton").values())
+    (tmp_path / "prueba").mkdir()
+    texto = (
+        "caja: {faust: caja, sala: 0.3}" + chr(10) + "bombo: {faust: bombo}" + chr(10)
+    )
+    (tmp_path / "prueba" / "sonidos.yaml").write_text(texto, encoding="utf-8")
+    sonidos = cargar_sonidos("prueba", carpeta=tmp_path)
+    assert (sonidos["caja"].sala, sonidos["bombo"].sala) == (0.3, 0.0)
 
 
 @pytest.mark.parametrize("sala", ["1.5", "-0.1", "mucha"])
