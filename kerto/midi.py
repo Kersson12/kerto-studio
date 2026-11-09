@@ -62,14 +62,19 @@ def _pista_de_tempo(beat: Beat, fin: int) -> mido.MidiTrack:
 
 
 def _pista_midi(pista: Pista, canal: int, fin: int) -> mido.MidiTrack:
-    eventos: list[tuple[int, int, mido.Message]] = []
-    for nota in pista.notas:
+    eventos: list[tuple[int, int, mido.Message | mido.MetaMessage]] = []
+    for indice, nota in enumerate(pista.notas):
         inicio = _pulsos(nota.inicio)
         final = max(inicio + 1, _pulsos(nota.inicio + nota.duracion))
+        if indice < len(pista.letras):
+            # La sílaba justo antes de su nota: Waveform y los karaokes la muestran.
+            eventos.append(
+                (inicio, 1, mido.MetaMessage("lyrics", text=pista.letras[indice]))
+            )
         eventos.append(
             (
                 inicio,
-                1,
+                2,
                 mido.Message(
                     "note_on", channel=canal, note=nota.tono, velocity=nota.velocidad
                 ),
@@ -78,7 +83,7 @@ def _pista_midi(pista: Pista, canal: int, fin: int) -> mido.MidiTrack:
         eventos.append(
             (final, 0, mido.Message("note_off", channel=canal, note=nota.tono))
         )
-    # En el mismo pulso, primero se apaga la nota vieja y después suena la nueva.
+    # En el mismo pulso: se apaga la nota vieja, va la sílaba y suena la nueva.
     eventos.sort(key=lambda evento: (evento[0], evento[1]))
     mensajes: list[mido.Message | mido.MetaMessage] = [
         mido.MetaMessage("track_name", name=pista.nombre)

@@ -232,19 +232,41 @@ def carpeta_cancion(tmp_path, monkeypatch):
 
 def test_cancion_render_lee_cancion_yaml(carpeta_cancion, capsys):
     assert main(["cancion", "render", "--cancion", "prueba", "--sin-wav"]) == 0
-    archivo = carpeta_cancion / "cancion" / "prueba-instrumental.mid"
+    archivo = carpeta_cancion / "cancion" / "prueba.mid"
     assert archivo.is_file()
     lineas = capsys.readouterr().out.strip().splitlines()
     assert lineas[0] == "Canción: Prueba · reggaeton movido con teclado · Am a 95 BPM"
     assert lineas[1] == "Estructura: intro (2) · coro (2) = 4 compases, 0:10"
     assert lineas[2] == "Acordes: intro Am G · coro Am F"
-    assert lineas[3].endswith("prueba-instrumental.mid")
+    assert lineas[3].startswith("Melodía: todavía no hay letra")
+    assert lineas[4] == "Archivos: canciones/prueba/cancion/ · prueba.mid"
 
 
 def test_cancion_render_con_wav(carpeta_cancion, capsys):
     assert main(["cancion", "render", "--cancion", "prueba", "--sin-surge"]) == 0
     assert (carpeta_cancion / "cancion" / "prueba-instrumental.wav").is_file()
-    assert "prueba-instrumental.mid y .wav" in capsys.readouterr().out
+    assert "prueba.mid, prueba-instrumental.wav" in capsys.readouterr().out
+
+
+def test_cancion_render_con_letra_hace_guia_e_instrumental(carpeta_cancion, capsys):
+    yaml = CANCION_YAML + "voz: {comodo: F#3-A#3}\n"
+    (carpeta_cancion / "cancion.yaml").write_text(yaml, encoding="utf-8")
+    (carpeta_cancion / "letra.md").write_text(
+        "## Coro\nLuna negra, luna negra\ncuando sale, nadie la frena\n",
+        encoding="utf-8",
+    )
+    assert main(["cancion", "render", "--cancion", "prueba", "--sin-surge"]) == 0
+    salida = capsys.readouterr().out.strip().splitlines()
+    assert salida[3].startswith("Melodía: 17 notas de ")
+    assert "(tu rango: E3–C4) · con letra: coro" in salida[3]
+    carpeta = carpeta_cancion / "cancion"
+    assert sorted(p.name for p in carpeta.iterdir()) == [
+        "prueba-guia.wav",
+        "prueba-instrumental.wav",
+        "prueba.mid",
+    ]
+    pistas = [p.name for p in mido.MidiFile(carpeta / "prueba.mid").tracks]
+    assert pistas[-1] == "melodia"
 
 
 def test_cancion_render_usa_la_estructura_del_pack_si_no_hay(carpeta_cancion, capsys):

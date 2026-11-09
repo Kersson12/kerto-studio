@@ -37,6 +37,10 @@ VOCES: dict[str, str] = {
     # Teclado: piano eléctrico simple, con armónicos que se apagan.
     "teclado": "process = (os.osc(freq) + 0.3 * os.osc(2 * freq) + 0.1 * os.osc(3 * freq))"
     " * caida(1.2) * (gate : si.smooth(ba.tau2pole(0.02))) * gain * 0.5 <: _, _;",
+    # Guía: seno con un poco de vibrato y su octava suave, para la melodía guía.
+    "guia": "vib = 1 + 0.003 * os.osc(5);"
+    " process = (os.osc(freq * vib) + 0.25 * os.osc(2 * freq * vib))"
+    " * (gate : si.smooth(ba.tau2pole(0.03))) * gain * 0.6 <: _, _;",
     # Pluck: sierra con filtro que se cierra rápido, para arpegios.
     "pluck": "process = os.sawtooth(freq) : fi.lowpass(2, 700 + 4000 * caida(0.15))"
     " * caida(0.5) * gain * 0.5 <: _, _;",

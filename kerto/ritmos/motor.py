@@ -46,6 +46,7 @@ class Pista:
     bateria: bool
     programa: int | None
     notas: tuple[Nota, ...]
+    letras: tuple[str, ...] = ()  # la sílaba de cada nota, en la melodía guía
 
 
 @dataclass(frozen=True)

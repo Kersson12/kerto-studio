@@ -49,8 +49,14 @@ def renderizar(
     sonidos: dict[str, Sonido],
     usar_surge: bool = True,
     frecuencia: int = FRECUENCIA,
+    sin: dict[Path, frozenset[str]] | None = None,
 ) -> Render:
-    """Renderiza el beat a un WAV estéreo de 24 bits y devuelve el resumen."""
+    """Renderiza el beat a un WAV estéreo de 24 bits y devuelve el resumen.
+
+    `sin` escribe mezclas extra sin algunas pistas, con el mismo render: por
+    ejemplo {instrumental.wav: {"melodia"}}.
+    """
+    sin = sin or {}
     faltan = [pista.nombre for pista in beat.pistas if pista.nombre not in sonidos]
     if faltan:
         raise ErrorSonidos(f"faltan los sonidos de: {', '.join(faltan)}")
@@ -65,6 +71,7 @@ def renderizar(
     muestras = round(segundos * frecuencia)
     surge = buscar_surge() if usar_surge else None
     mezcla = np.zeros((2, muestras))
+    extras = {destino: np.zeros((2, muestras)) for destino in sin}
     motores: dict[str, str] = {}
     with tempfile.TemporaryDirectory(prefix="kerto-") as temporal:
         for pista in beat.pistas:
@@ -84,11 +91,20 @@ def renderizar(
                     muestras, frecuencia, golpes, db, ms
                 )
             mezcla += audio
-    pico = float(np.abs(mezcla).max())
-    if pico > 0:
-        mezcla *= 10 ** (PICO_MEZCLA_DB / 20) / pico
+            for destino, extra in extras.items():
+                if pista.nombre not in sin[destino]:
+                    extra += audio
+    for destino, extra in extras.items():
+        escribir_wav(destino, _normalizar(extra), frecuencia)
+    mezcla = _normalizar(mezcla)
     escribir_wav(ruta, mezcla, frecuencia)
     return Render(ruta, motores, segundos, _db(float(np.abs(mezcla).max())))
+
+
+def _normalizar(mezcla: np.ndarray) -> np.ndarray:
+    """La mezcla con el pico en PICO_MEZCLA_DB."""
+    pico = float(np.abs(mezcla).max())
+    return mezcla if pico == 0 else mezcla * (10 ** (PICO_MEZCLA_DB / 20) / pico)
 
 
 def _segundos(tiempo: Fraction, bpm: int) -> Fraction:

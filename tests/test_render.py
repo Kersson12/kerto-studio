@@ -126,7 +126,7 @@ def test_escribir_wav_rechaza_audio_que_no_es_canales_por_muestras(tmp_path):
 def test_sonidos_del_reggaeton_cubren_todos_los_instrumentos():
     sonidos = cargar_sonidos("reggaeton")
     pack = cargar_pack("reggaeton")
-    assert list(sonidos) == [*pack.instrumentos, *pack.acordes]
+    assert list(sonidos) == [*pack.instrumentos, *pack.acordes, "melodia"]
     assert all(s.faust in VOCES for s in sonidos.values())
     assert all(s.nivel <= 0 for s in sonidos.values())
     assert sonidos["808"].surge == "Basses/Sub Square"
