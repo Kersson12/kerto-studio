@@ -60,6 +60,21 @@ def renderizar_cancion(
     nombre: str, wav: bool = True, usar_surge: bool = True
 ) -> Cancion:
     """Lee cancion.yaml y letra.md, arma la canción y escribe el MIDI (y los WAV)."""
+    cancion = armar_cancion(nombre)
+    beat, melodia = cancion.beat, cancion.melodia
+    destino = carpeta_cancion(nombre) / CARPETA_RENDER / nombre
+    archivos = [exportar_midi(beat, destino.with_suffix(".mid"))]
+    carpeta_pistas = destino.parent / CARPETA_PISTAS
+    for viejo in carpeta_pistas.glob("*.mid"):  # pistas de un render anterior
+        viejo.unlink()
+    pistas = exportar_pistas(beat, carpeta_pistas)
+    if wav:
+        archivos += _renderizar_audio(beat, destino, beat.genero, usar_surge, melodia)
+    return replace(cancion, archivos=tuple(archivos), pistas=tuple(pistas))
+
+
+def armar_cancion(nombre: str) -> Cancion:
+    """La canción armada en memoria (beat y melodía), sin escribir archivos."""
     datos = leer_cancion(nombre)
     genero = datos.get("genero")
     if not genero:
@@ -87,16 +102,8 @@ def renderizar_cancion(
         beat = replace(beat, pistas=(*beat.pistas, melodia))
     else:
         melodia = None
-    destino = carpeta / CARPETA_RENDER / nombre
-    archivos = [exportar_midi(beat, destino.with_suffix(".mid"))]
-    carpeta_pistas = destino.parent / CARPETA_PISTAS
-    for viejo in carpeta_pistas.glob("*.mid"):  # pistas de un render anterior
-        viejo.unlink()
-    pistas = exportar_pistas(beat, carpeta_pistas)
-    if wav:
-        archivos += _renderizar_audio(beat, destino, str(genero), usar_surge, melodia)
     titulo = str(datos.get("nombre") or nombre)
-    return Cancion(titulo, capa, beat, melodia, rango, tuple(archivos), tuple(pistas))
+    return Cancion(titulo, capa, beat, melodia, rango, ())
 
 
 def _renderizar_audio(
@@ -134,12 +141,17 @@ def resumir_cancion(cancion: Cancion) -> str:
         vistos.setdefault(tipo, " ".join(ciclo_de_acordes(acordes)))
     acordes = "Acordes: " + " · ".join(f"{t} {a}" for t, a in vistos.items())
     melodia = _resumir_melodia(cancion)
-    carpeta = cancion.archivos[0].parent.as_posix()
-    nombres = ", ".join(ruta.name for ruta in cancion.archivos)
-    pistas = (
-        f" · {CARPETA_PISTAS}/ ({len(cancion.pistas)} MIDI)" if cancion.pistas else ""
-    )
-    archivos = f"Archivos: {carpeta}/ · {nombres}{pistas}"
+    if cancion.archivos:
+        carpeta = cancion.archivos[0].parent.as_posix()
+        nombres = ", ".join(ruta.name for ruta in cancion.archivos)
+        pistas = (
+            f" · {CARPETA_PISTAS}/ ({len(cancion.pistas)} MIDI)"
+            if cancion.pistas
+            else ""
+        )
+        archivos = f"Archivos: {carpeta}/ · {nombres}{pistas}"
+    else:
+        archivos = "Archivos: todavía no se renderizó"
     return f"{que}\n{estructura}\n{acordes}\n{melodia}\n{archivos}"
 
 
