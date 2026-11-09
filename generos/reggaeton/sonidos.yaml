@@ -3,6 +3,8 @@
 # surge: patch de fábrica de Surge XT (carpeta/nombre). Si Surge XT no está
 #        instalado o el patch no suena, se usa la voz faust.
 # faust: voz del sintetizador interno de Kerto: bombo, caja, hihat, conga o sub.
+# agacha: baja la pista cuando suena otra (el 808 con el bombo, para que no
+#        choquen): con = la otra pista, db = cuánto baja, ms = cuánto tarda en volver.
 # nivel: pico de la pista en dBFS antes de mezclar (0 es el máximo; más
 #        negativo suena más bajo).
 #
@@ -14,7 +16,7 @@ bombo: {surge: Percussion/Kick 909ish, faust: bombo, nivel: -4}
 caja: {surge: Percussion/Snare Tight, faust: caja, nivel: -6}
 hihat: {faust: hihat, nivel: -12}
 percusion: {faust: conga, nivel: -12}
-808: {surge: Basses/Sub Square, faust: sub, nivel: -5}
+808: {surge: Basses/Sub Square, faust: sub, nivel: -5, agacha: {con: bombo, db: 8, ms: 120}}
 
 # Capas de acordes (opcionales).
 pad: {surge: Pads/Ghost Pad, faust: pad, nivel: -8}

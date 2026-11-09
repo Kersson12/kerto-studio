@@ -28,6 +28,7 @@ BLOQUE = 512
 PREROLL = 0.25
 PICO_MEZCLA_DB = -1.0
 VOCES_FAUST = 16
+ATAQUE_AGACHADO = 0.002  # segundos que tarda el 808 en agacharse
 
 Creador = Callable[[daw.RenderEngine], object]
 
@@ -53,6 +54,13 @@ def renderizar(
     faltan = [pista.nombre for pista in beat.pistas if pista.nombre not in sonidos]
     if faltan:
         raise ErrorSonidos(f"faltan los sonidos de: {', '.join(faltan)}")
+    por_nombre = {pista.nombre: pista for pista in beat.pistas}
+    for pista in beat.pistas:
+        agacha = sonidos[pista.nombre].agacha
+        if agacha is not None and agacha[0] not in por_nombre:
+            raise ErrorSonidos(
+                f"{pista.nombre!r} se agacha con {agacha[0]!r}, que no está en el beat"
+            )
     segundos = float(_segundos(beat.duracion, beat.bpm))
     muestras = round(segundos * frecuencia)
     surge = buscar_surge() if usar_surge else None
@@ -65,7 +73,17 @@ def renderizar(
                 pista, beat.bpm, sonido, surge, muestras, frecuencia, Path(temporal)
             )
             motores[pista.nombre] = motor
-            mezcla += _a_nivel(audio, sonido.nivel)
+            audio = _a_nivel(audio, sonido.nivel)
+            if sonido.agacha is not None:
+                con, db, ms = sonido.agacha
+                golpes = [
+                    float(_segundos(nota.inicio, beat.bpm))
+                    for nota in por_nombre[con].notas
+                ]
+                audio = audio * envolvente_agachado(
+                    muestras, frecuencia, golpes, db, ms
+                )
+            mezcla += audio
     pico = float(np.abs(mezcla).max())
     if pico > 0:
         mezcla *= 10 ** (PICO_MEZCLA_DB / 20) / pico
@@ -80,6 +98,31 @@ def _segundos(tiempo: Fraction, bpm: int) -> Fraction:
 
 def _db(pico: float) -> float:
     return 20 * math.log10(pico) if pico > 0 else -math.inf
+
+
+def envolvente_agachado(
+    muestras: int, frecuencia: int, golpes: list[float], db: float, ms: float
+) -> np.ndarray:
+    """Ganancia que baja `db` en cada golpe y se recupera con `ms` de constante.
+
+    Es el "sidechain" de los productores: el 808 se agacha cuando suena el bombo
+    para que los dos graves no se tapen. La bajada dura ATAQUE_AGACHADO, sin clics.
+    """
+    profundidad = np.zeros(muestras)
+    ataque = max(1, round(ATAQUE_AGACHADO * frecuencia))
+    constante = ms / 1000 * frecuencia
+    largo = ataque + round(6 * constante)
+    curva = np.concatenate(
+        [np.arange(ataque) / ataque, np.exp(-np.arange(largo - ataque) / constante)]
+    )
+    for golpe in golpes:
+        inicio = round(golpe * frecuencia)
+        if not 0 <= inicio < muestras:
+            continue
+        tramo = curva[: muestras - inicio]
+        fin = inicio + tramo.size
+        profundidad[inicio:fin] = np.maximum(profundidad[inicio:fin], tramo)
+    return 1 - profundidad * (1 - 10 ** (-db / 20))
 
 
 def _a_nivel(audio: np.ndarray, nivel_db: float) -> np.ndarray:

@@ -213,3 +213,49 @@ def test_render_de_cada_capa_de_acordes(capa, tmp_path):
     render = renderizar(beat, tmp_path / "beat.wav", sonidos, usar_surge=False)
     assert render.motores[capa] == "faust"
     assert render.pico_db == pytest.approx(-1.0, abs=0.01)
+
+
+# --- El 808 se agacha cuando suena el bombo ---
+
+
+def test_envolvente_de_agachado():
+    from kerto.render.motor import envolvente_agachado
+
+    sr = 1000
+    envolvente = envolvente_agachado(2000, sr, [0.5, 1.5], db=8, ms=100)
+    assert envolvente[0] == pytest.approx(1.0)
+    assert envolvente[int(0.5 * sr) + 3] == pytest.approx(10 ** (-8 / 20), abs=0.02)
+    assert envolvente[int(1.0 * sr)] > 0.98  # ya se recuperó
+    assert envolvente[int(1.5 * sr) + 3] < 0.45
+    assert envolvente.min() >= 10 ** (-8 / 20) - 1e-6
+
+
+def test_sonidos_del_808_se_agachan_con_el_bombo():
+    sonidos = cargar_sonidos("reggaeton")
+    assert sonidos["808"].agacha == ("bombo", 8.0, 120.0)
+    assert sonidos["bombo"].agacha is None
+
+
+@pytest.mark.parametrize(
+    ("agacha", "mensaje"),
+    [("{con: bombo, db: -3}", "db"), ("{db: 8}", "con"), ("5", "agacha")],
+)
+def test_agacha_invalido(tmp_path, agacha, mensaje):
+    (tmp_path / "prueba").mkdir()
+    texto = f"808: {{faust: sub, agacha: {agacha}}}\n"
+    (tmp_path / "prueba" / "sonidos.yaml").write_text(texto, encoding="utf-8")
+    with pytest.raises(ErrorSonidos, match=mensaje):
+        cargar_sonidos("prueba", carpeta=tmp_path)
+
+
+def test_render_falla_si_se_agacha_con_una_pista_que_no_existe(beat_corto, tmp_path):
+    sonidos = dict(cargar_sonidos("reggaeton"))
+    sonidos["808"] = Sonido(None, "sub", -5.0, ("timbal", 8.0, 120.0))
+    with pytest.raises(ErrorSonidos, match="timbal"):
+        renderizar(beat_corto, tmp_path / "b.wav", sonidos, usar_surge=False)
+
+
+def test_envolvente_ignora_golpes_fuera_del_audio():
+    from kerto.render.motor import envolvente_agachado
+
+    assert np.all(envolvente_agachado(100, 1000, [5.0, -1.0], db=8, ms=100) == 1.0)

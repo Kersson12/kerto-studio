@@ -85,6 +85,8 @@ class Seccion:
     progresion: str | None = None  # si falta, la de la variación
     sin: tuple[str, ...] = ()  # instrumentos que se callan
     acordes: bool = True  # si suena la capa de acordes
+    capas: tuple[str, ...] = ()  # capas de acordes que se suman
+    patrones: dict[str, Patron] = field(default_factory=dict)  # propios
 
 
 @dataclass(frozen=True)
@@ -162,7 +164,8 @@ def _armar_pack(datos: dict[str, Any]) -> Pack:
     tiempo, fuerza = _humanizacion(datos.get("humanizar") or {})
     instrumentos = _instrumentos(datos["instrumentos"])
     patrones = _LectorDePatrones(instrumentos, paso, compas)
-    secciones = _secciones(datos.get("secciones") or {}, instrumentos, tonalidad)
+    capas = _capas(datos.get("acordes") or {}, patrones)
+    secciones = _secciones(datos.get("secciones") or {}, patrones, capas, tonalidad)
     estructura = datos.get("estructura")
     return Pack(
         nombre=str(datos["nombre"]),
@@ -179,7 +182,7 @@ def _armar_pack(datos: dict[str, Any]) -> Pack:
         instrumentos=instrumentos,
         variaciones=_variaciones(datos["variaciones"], patrones, tonalidad),
         transiciones=_transiciones(datos.get("transiciones") or {}, patrones),
-        acordes=_capas(datos.get("acordes") or {}, patrones),
+        acordes=capas,
         secciones=secciones,
         estructura=()
         if estructura is None
@@ -218,8 +221,12 @@ def parse_estructura(
 
 
 def _secciones(
-    datos: object, instrumentos: dict[str, "Instrumento"], tonalidad: str
+    datos: object,
+    patrones: "_LectorDePatrones",
+    capas: dict[str, "CapaAcordes"],
+    tonalidad: str,
 ) -> dict[str, Seccion]:
+    instrumentos = patrones.instrumentos
     if not isinstance(datos, dict):
         raise ErrorPack("secciones debe ser un mapa nombre: sección, como coro: {}")
     secciones = {}
@@ -247,11 +254,27 @@ def _secciones(
         acordes = valor.get("acordes", True)
         if not isinstance(acordes, bool):
             raise ErrorPack(f"acordes de {nombre!r} debe ser true o false")
+        extra = valor.get("capas", [])
+        faltan = (
+            [str(c) for c in extra if str(c) not in capas]
+            if isinstance(extra, list)
+            else [str(extra)]
+        )
+        if faltan:
+            raise ErrorPack(
+                f"la sección {nombre!r} suma capas de acordes que no existen:"
+                f" {', '.join(faltan)}; usa {', '.join(capas) or 'ninguna'}"
+            )
+        propios = patrones.leer(
+            valor.get("patrones") or {}, f"la sección {nombre!r}", un_compas=False
+        )
         secciones[nombre] = Seccion(
             nombre,
             None if grados is None else str(grados),
             tuple(str(i) for i in sin),
             acordes,
+            tuple(str(c) for c in extra),
+            propios,
         )
     return secciones
 

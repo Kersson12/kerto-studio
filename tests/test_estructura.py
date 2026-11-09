@@ -275,3 +275,67 @@ def test_cancion_render_explica_los_errores(
 def test_crear_cancion_con_una_seccion_desconocida(pack):
     with pytest.raises(ErrorBeat, match="estribillo"):
         crear_cancion(pack, (("estribillo", 2),))
+
+
+# --- Capas extra y patrones propios por sección ---
+
+
+def test_el_coro_suma_pad_y_arpegio(pack, cancion):
+    assert pack.secciones["coro"].capas == ("pad", "arpegio")
+    nombres = [p.nombre for p in cancion.pistas]
+    assert nombres[-3:] == ["teclado", "pad", "arpegio"]
+    for capa in ("pad", "arpegio"):
+        compases = {int(n.inicio) for n in notas(cancion, capa)}
+        assert compases == set(range(16, 24)) | set(range(32, 40))
+    assert {int(n.inicio) for n in notas(cancion, "teclado")} >= set(range(4, 12))
+
+
+def test_el_808_toca_la_raiz_de_cada_acorde(pack, cancion):
+    from kerto.teoria.acordes import parse_acorde
+    from kerto.teoria.escalas import clase_de_altura
+
+    for nota in notas(cancion, "808"):
+        acorde = parse_acorde(cancion.acordes[int(nota.inicio)])
+        assert nota.tono % 12 == clase_de_altura(acorde.raiz)
+
+
+PACK_CON_SECCIONES = (
+    PACK_MINIMO
+    + """
+acordes:
+  pad: {patron: "X... .... .... ....", octava: 3, largo: 1}
+secciones:
+  verso: {}
+  coro: {capas: [pad], patrones: {bombo: "X... .... .... ...."}}
+estructura: [verso 2, coro 2]
+"""
+)
+
+
+def test_una_seccion_puede_cambiar_patrones_y_sumar_capas(tmp_path):
+    (tmp_path / "prueba").mkdir()
+    (tmp_path / "prueba" / "pack.yaml").write_text(PACK_CON_SECCIONES, encoding="utf-8")
+    beat = crear_cancion(cargar_pack("prueba", carpeta=tmp_path), humanizar=False)
+    bombo = notas(beat, "bombo")
+    assert len(en_compases(bombo, 0, 1)) == 4  # verso: patrón de la variación
+    assert len(en_compases(bombo, 2, 3)) == 1  # coro: su patrón propio
+    assert {int(n.inicio) for n in notas(beat, "pad")} == {2, 3}
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "mensaje"),
+    [
+        ("capas: [pad]", "capas: [violin]", "violin"),
+        (
+            'patrones: {bombo: "X... .... .... ...."}',
+            'patrones: {caja: "X..."}',
+            "caja",
+        ),
+    ],
+)
+def test_capas_y_patrones_de_seccion_invalidos(tmp_path, viejo, nuevo, mensaje):
+    (tmp_path / "prueba").mkdir()
+    texto = PACK_CON_SECCIONES.replace(viejo, nuevo)
+    (tmp_path / "prueba" / "pack.yaml").write_text(texto, encoding="utf-8")
+    with pytest.raises(ErrorPack, match=mensaje):
+        cargar_pack("prueba", carpeta=tmp_path)

@@ -90,11 +90,12 @@ acordes:
 # callar instrumentos; el ritmo sale de la variación elegida.
 # progresion: acordes de la sección (si falta, los de la variación)
 # sin: instrumentos que se callan · acordes: false apaga la capa de acordes
+# capas: capas de acordes que se suman · patrones: patrones propios de la sección
 secciones:
   intro: {sin: [bombo, caja, 808]} # entra suave: hi-hat, conga y acordes
   verso: {}
   precoro: {progresion: VI VII, sin: [bombo]} # sin bombo para crear tensión
-  coro: {progresion: i VI III VII} # en Am: Am F C G, el momento más fuerte
+  coro: {progresion: i VI III VII, capas: [pad, arpegio]} # Am F C G, con pad y arpegio encima: lo más fuerte
   puente: {progresion: iv v, sin: [bombo, caja]} # baja la energía antes del final
   outro: {sin: [bombo, caja, 808]}
 

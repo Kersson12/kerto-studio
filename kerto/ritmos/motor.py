@@ -179,8 +179,12 @@ def crear_cancion(
     capa = _elegir_capa(pack, acordes)
     instrumentos = list(pack.instrumentos.values())
     crudas: dict[str, list[Nota]] = {i.nombre: [] for i in instrumentos}
-    if capa is not None:
-        crudas[capa.nombre] = []
+    # Capas de la canción: la elegida y las que suma alguna sección, sin repetir.
+    capas = [capa.nombre] if capa is not None else []
+    for nombre, _ in partes:
+        capas += [c for c in pack.secciones[nombre].capas if c not in capas]
+    for nombre_capa in capas:
+        crudas[nombre_capa] = []
     todos: list[Acorde] = []
     marcas: list[Marca] = []
     vistas: dict[str, int] = {}
@@ -195,20 +199,26 @@ def crear_cancion(
             compases,
         )
         corrimiento = len(todos) * pack.largo_compas
+        ritmo = (
+            replace(elegida, patrones={**elegida.patrones, **seccion.patrones})
+            if seccion.patrones
+            else elegida
+        )
         for instrumento in instrumentos:
             if instrumento.nombre not in seccion.sin:
-                hechas = _notas(pack, instrumento, elegida, tipos, por_compas)
+                hechas = _notas(pack, instrumento, ritmo, tipos, por_compas)
                 crudas[instrumento.nombre] += _correr(hechas, corrimiento)
-        if capa is not None and seccion.acordes:
-            hechas = _notas_capa(pack, capa, tipos, por_compas)
-            crudas[capa.nombre] += _correr(hechas, corrimiento)
+        suenan = [capa.nombre] if capa is not None and seccion.acordes else []
+        suenan += [c for c in seccion.capas if c not in suenan]
+        for nombre_capa in suenan:
+            hechas = _notas_capa(pack, pack.acordes[nombre_capa], tipos, por_compas)
+            crudas[nombre_capa] += _correr(hechas, corrimiento)
         vistas[nombre] = vistas.get(nombre, 0) + 1
         etiqueta = nombre if vistas[nombre] == 1 else f"{nombre} {vistas[nombre]}"
         marcas.append(Marca(etiqueta, len(todos), compases))
         todos.extend(por_compas)
     filas = [(i.nombre, i.bateria, i.programa, crudas[i.nombre]) for i in instrumentos]
-    if capa is not None:
-        filas.append((capa.nombre, False, capa.programa, crudas[capa.nombre]))
+    filas += [(c, False, pack.acordes[c].programa, crudas[c]) for c in capas]
     return Beat(
         genero=pack.nombre,
         variacion=elegida.nombre,

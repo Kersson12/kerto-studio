@@ -24,6 +24,8 @@ class Sonido:
     surge: str | None
     faust: str
     nivel: float
+    # (pista, dB, ms): baja tantos dB cuando suena esa pista y se recupera en ms.
+    agacha: tuple[str, float, float] | None = None
 
 
 def cargar_sonidos(genero: str, carpeta: Path = GENEROS) -> dict[str, Sonido]:
@@ -62,4 +64,24 @@ def _sonido(nombre: str, datos: object) -> Sonido:
         raise ErrorSonidos(
             f"nivel de {nombre!r} debe ser 0 o negativo (dBFS), no {nivel!r}"
         )
-    return Sonido(surge, voz, float(nivel))
+    return Sonido(surge, voz, float(nivel), _agacha(nombre, datos.get("agacha")))
+
+
+def _agacha(nombre: str, datos: object) -> tuple[str, float, float] | None:
+    """agacha: {con: bombo, db: 8, ms: 120} -> ('bombo', 8.0, 120.0)."""
+    if datos is None:
+        return None
+    if not isinstance(datos, dict):
+        raise ErrorSonidos(
+            f"agacha de {nombre!r} debe ser un mapa, como {{con: bombo}}"
+        )
+    con = datos.get("con")
+    if not isinstance(con, str):
+        raise ErrorSonidos(f"agacha de {nombre!r} necesita con: la pista que lo agacha")
+    valores = []
+    for clave, defecto in (("db", 8), ("ms", 120)):
+        valor = datos.get(clave, defecto)
+        if not isinstance(valor, int | float) or isinstance(valor, bool) or valor <= 0:
+            raise ErrorSonidos(f"agacha.{clave} de {nombre!r} debe ser mayor que 0")
+        valores.append(float(valor))
+    return con, valores[0], valores[1]
