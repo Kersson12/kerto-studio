@@ -26,6 +26,7 @@ class Sonido:
     nivel: float
     # (pista, dB, ms): baja tantos dB cuando suena esa pista y se recupera en ms.
     agacha: tuple[str, float, float] | None = None
+    sala: float = 0.0  # cuánto va a la reverb de sala, de 0 a 1
 
 
 def cargar_sonidos(genero: str, carpeta: Path = GENEROS) -> dict[str, Sonido]:
@@ -64,7 +65,15 @@ def _sonido(nombre: str, datos: object) -> Sonido:
         raise ErrorSonidos(
             f"nivel de {nombre!r} debe ser 0 o negativo (dBFS), no {nivel!r}"
         )
-    return Sonido(surge, voz, float(nivel), _agacha(nombre, datos.get("agacha")))
+    sala = datos.get("sala", 0)
+    if (
+        not isinstance(sala, int | float)
+        or isinstance(sala, bool)
+        or not 0 <= sala <= 1
+    ):
+        raise ErrorSonidos(f"sala de {nombre!r} debe ir de 0 a 1, no {sala!r}")
+    agacha = _agacha(nombre, datos.get("agacha"))
+    return Sonido(surge, voz, float(nivel), agacha, float(sala))
 
 
 def _agacha(nombre: str, datos: object) -> tuple[str, float, float] | None:

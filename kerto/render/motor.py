@@ -16,6 +16,7 @@ import dawdreamer as daw
 import numpy as np
 
 from kerto.render.faust import dsp
+from kerto.render.sala import aplicar_sala, masterizar, respuesta_de_sala
 from kerto.render.sonidos import ErrorSonidos, Sonido
 from kerto.render.surge import buscar_surge, cargar_patch
 from kerto.render.wav import escribir_wav
@@ -27,6 +28,7 @@ BLOQUE = 512
 # instante: todo suena PREROLL segundos más tarde y luego se recorta.
 PREROLL = 0.25
 PICO_MEZCLA_DB = -1.0
+RMS_MEZCLA_DB = -12.0  # volumen de escucha, cerca de una canción terminada
 VOCES_FAUST = 16
 ATAQUE_AGACHADO = 0.002  # segundos que tarda el 808 en agacharse
 
@@ -72,6 +74,8 @@ def renderizar(
     surge = buscar_surge() if usar_surge else None
     mezcla = np.zeros((2, muestras))
     extras = {destino: np.zeros((2, muestras)) for destino in sin}
+    # Lo que va a la sala, por mezcla: la principal (None) y cada extra.
+    envios = {destino: np.zeros(muestras) for destino in (None, *sin)}
     motores: dict[str, str] = {}
     with tempfile.TemporaryDirectory(prefix="kerto-") as temporal:
         for pista in beat.pistas:
@@ -94,17 +98,27 @@ def renderizar(
             for destino, extra in extras.items():
                 if pista.nombre not in sin[destino]:
                     extra += audio
+            if sonido.sala > 0:
+                for destino, envio in envios.items():
+                    if destino is None or pista.nombre not in sin[destino]:
+                        envio += audio.mean(axis=0) * sonido.sala
+    sala = respuesta_de_sala(frecuencia)
     for destino, extra in extras.items():
-        escribir_wav(destino, _normalizar(extra), frecuencia)
-    mezcla = _normalizar(mezcla)
+        escribir_wav(
+            destino, _terminar(extra, envios[destino], sala, frecuencia), frecuencia
+        )
+    mezcla = _terminar(mezcla, envios[None], sala, frecuencia)
     escribir_wav(ruta, mezcla, frecuencia)
     return Render(ruta, motores, segundos, _db(float(np.abs(mezcla).max())))
 
 
-def _normalizar(mezcla: np.ndarray) -> np.ndarray:
-    """La mezcla con el pico en PICO_MEZCLA_DB."""
-    pico = float(np.abs(mezcla).max())
-    return mezcla if pico == 0 else mezcla * (10 ** (PICO_MEZCLA_DB / 20) / pico)
+def _terminar(
+    mezcla: np.ndarray, envio: np.ndarray, sala: np.ndarray, frecuencia: int
+) -> np.ndarray:
+    """Suma la sala y deja la mezcla con volumen de canción, sin pasar de -1 dBFS."""
+    if np.any(envio):
+        mezcla = mezcla + aplicar_sala(envio, sala, frecuencia)
+    return masterizar(mezcla, frecuencia, RMS_MEZCLA_DB, PICO_MEZCLA_DB)
 
 
 def _segundos(tiempo: Fraction, bpm: int) -> Fraction:
