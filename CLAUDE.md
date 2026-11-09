@@ -8,7 +8,12 @@ Motor open source (GPL-3.0) que convierte a Claude Code en un equipo de producci
 - `uv sync`: instala dependencias (uv baja Python 3.12)
 - `uv run pytest`: tests; `uv run pytest --cov=kerto` para ver cobertura
 - `uv run ruff format . && uv run ruff check .`: formato y lint
-- `uv run kerto --help`: el motor; los agentes lo usan hasta que exista el MCP (Fase 4)
+- `uv run kerto --help`: el motor en la terminal; grabar la voz (`kerto voz grabar`) se hace desde aquí porque necesita el micrófono
+
+## Motor desde Claude Code
+- Para crear beats y canciones, analizar la voz, transponer o ver cómo va una canción usa las herramientas del MCP `kerto` (`.mcp.json`): `listar_generos`, `crear_beat`, `renderizar_cancion`, `generar_seccion`, `transponer`, `analizar_voz` y `estado_cancion`. No uses Bash para eso.
+- Un pedido como "hazme un perreo en La menor a 95" se resuelve con `crear_beat` (perreo = reggaetón); después dile al usuario qué escuchar y dónde están los archivos.
+- Los agentes de `.claude/agents/` tienen solo las herramientas que necesita cada uno.
 
 ## Cómo trabajar
 - Ciclo de cada paso: plan corto, tests primero, código, commit y checkpoint con algo para escuchar o probar.
