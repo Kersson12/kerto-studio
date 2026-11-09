@@ -4,6 +4,7 @@ Se escribe con mido, pulso a pulso, para que los tiempos sean exactos.
 Se lee con pretty_midi para dar un resumen corto en vez del archivo entero.
 """
 
+from dataclasses import replace
 from fractions import Fraction
 from pathlib import Path
 
@@ -35,6 +36,14 @@ def exportar_midi(beat: Beat, ruta: Path) -> Path:
     ruta.parent.mkdir(parents=True, exist_ok=True)
     midi.save(ruta)
     return ruta
+
+
+def exportar_pistas(beat: Beat, carpeta: Path) -> list[Path]:
+    """Un MIDI por instrumento (<pista>.mid), cada uno con su tempo y sus marcas."""
+    return [
+        exportar_midi(replace(beat, pistas=(pista,)), carpeta / f"{pista.nombre}.mid")
+        for pista in beat.pistas
+    ]
 
 
 def _pista_de_tempo(beat: Beat, fin: int) -> mido.MidiTrack:

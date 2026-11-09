@@ -4,7 +4,7 @@ Kerto convierte a [Claude Code](https://claude.com/claude-code) en un equipo de 
 
 *Kerto turns Claude Code into a free, open source music production team: beats, vocal coaching, autotune advice, mixing and mastering. English docs arrive with v0.1.*
 
-**Estado:** en construcción, Fase 1 de [PLAN.md](PLAN.md) (primer beat).
+**Estado:** en construcción, Fase 3 de [PLAN.md](PLAN.md) (canción completa).
 
 ## Primer beat
 
@@ -14,6 +14,14 @@ uv run kerto beat --genero reggaeton --bpm 95 --tonalidad Am --compases 8 --vari
 ```
 
 Crea tres variaciones (clásico, movido y oscuro) en MIDI y WAV dentro de `canciones/borrador/beats/`. Con [Surge XT](https://surge-synthesizer.github.io) instalado, el bombo, la caja y el 808 suenan con sus patches de fábrica; sin él, suena el sintetizador interno. Los sonidos de cada género están en `generos/<genero>/sonidos.yaml`.
+
+## Canción completa
+
+```bash
+uv run kerto cancion render --cancion <nombre>
+```
+
+Lee `canciones/<nombre>/cancion.yaml` (género, variación, tonalidad, BPM y secciones) y `letra.md` (una línea por compás) y escribe en `canciones/<nombre>/cancion/` un MIDI con todas las pistas, un MIDI por pista, el WAV guía con una melodía hecha a tu rango y el WAV instrumental. Géneros: reggaetón y trap.
 
 ## Desarrollo
 

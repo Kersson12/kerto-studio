@@ -1,0 +1,85 @@
+# Pack de trap para Kerto.
+#
+# Trap a 140 BPM con sensación de medio tiempo: la caja cae en el tercer tiempo,
+# el hi-hat hace redobles rápidos y el 808 se sostiene largo. Inspiración de
+# estilo: el trap argentino (se analiza el género, nunca se copia una canción).
+#
+# Cada carácter es una fusa (1/32): cada grupo de ocho es un tiempo del compás.
+# X = golpe fuerte, x = normal, o = suave, . = silencio.
+
+nombre: trap
+descripcion: Trap de medio tiempo, de 130 a 160 BPM, con redobles de hi-hat y 808 largo.
+compas: 4/4
+paso: 1/32
+bpm: {min: 130, max: 160, defecto: 140}
+tonalidad: Cm
+frase: 4
+humanizar: {tiempo: 1/512, fuerza: 5}
+
+instrumentos:
+  bombo: {nota: C2} # 36, bombo
+  caja: {nota: D#2} # 39, palmas: en trap la "caja" suele ser un clap
+  hihat: {nota: F#2} # 42, hi-hat cerrado
+  percusion: {nota: A#2} # 46, hi-hat abierto
+  # El 808 se sostiene hasta medio compás: es el bajo y el bombo largo a la vez.
+  808: {grave: E1, largo: 1/2, programa: 38}
+
+variaciones:
+  - nombre: oscuro
+    descripcion: Oscuro y con espacio, el 808 manda.
+    progresion: i VI VII i # en Cm: Cm Ab Bb Cm
+    patrones:
+      bombo: "X....... ......x. ........ ........"
+      caja: "........ ........ X....... ........"
+      hihat: "x...x... x...x... x...x... x.x.xxxx"
+      percusion: "........ ........ ........ ....o..."
+      808: "X....... ......x. ........ ........"
+
+  - nombre: melodico
+    descripcion: Melódico y con rebote, para cantar encima.
+    progresion: i VI III VII # en Cm: Cm Ab Eb Bb
+    patrones:
+      bombo: "X....... ..x..... ........ x......."
+      caja: "........ ........ X....... ........"
+      hihat: "x.x.x.x. x.x.x.x. x.x.x.x. x.x.xxxx"
+      percusion: "....o... ....o... ....o... ....o..."
+      808: "X....... ..x..... ........ x......."
+
+  - nombre: rebote
+    descripcion: Más movido, con bombo sincopado y hi-hat que se acelera.
+    progresion: i iv VII VI # en Cm: Cm Fm Bb Ab
+    patrones:
+      bombo: "X.....x. ...x.... ........ x.....x."
+      caja: "........ ........ X....... ......o."
+      hihat: "x.x.x.x. xxxx.x.. x.x.x.x. x.xxxx.."
+      percusion: "........ ....o... ........ ....o..."
+      808: "X.....x. ...x.... ........ x.....x."
+
+transiciones:
+  # Al cerrar cada frase: el hi-hat se vuelve redoble y las palmas se doblan.
+  relleno:
+    caja: "........ ........ X....... ....x.x."
+    hihat: "x.x.x.x. x.x.x.x. xxxxxxxx XxXxXxXx"
+  # Antes del coro: todo se calla en el último tiempo.
+  corte:
+    bombo: "X....... ........ ........ ........"
+    caja: "........ ........ X....... ........"
+    hihat: "x.x.x.x. x.x.x.x. x.x.x.x. ........"
+    percusion: "........ ........ ........ ........"
+    808: "X....... ........ ........ ........"
+
+# Capas de acordes (kerto beat --acordes piano).
+acordes:
+  piano: {patron: "X....... ........ ........ ........", octava: 4, largo: 1, programa: 0}
+  campana: {patron: "x...x... x...x... x...x... x...x...", octava: 5, largo: 1/8, programa: 14, arpegio: true}
+  pad: {patron: "X....... ........ ........ ........", octava: 3, largo: 1, programa: 89}
+
+# Secciones de la canción: el coro suma la campana encima.
+secciones:
+  intro: {sin: [bombo, caja, 808]}
+  verso: {}
+  coro: {capas: [campana]}
+  puente: {sin: [bombo]}
+  outro: {sin: [bombo, caja, 808]}
+
+estructura: [intro 4, coro 8, verso 16, coro 8, verso 16, coro 8, outro 4]

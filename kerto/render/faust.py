@@ -24,6 +24,9 @@ VOCES: dict[str, str] = {
     # Hi-hat cerrado: ruido agudo y corto.
     "hihat": "process = no.noise : fi.highpass(4, 7000) : fi.lowpass(2, 13000)"
     " * caida(0.05) * gain <: _, _;",
+    # Hi-hat abierto: el mismo ruido agudo, pero se apaga más lento.
+    "abierto": "process = no.noise : fi.highpass(4, 6500) : fi.lowpass(2, 12000)"
+    " * caida(0.3) * gain <: _, _;",
     # Conga: tono de la nota con un pequeño golpe de afinación.
     "conga": "process = os.osc(freq * (1 + 0.15 * caida(0.03))) * caida(0.22)"
     " * gain <: _, _;",

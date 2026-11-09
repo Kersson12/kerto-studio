@@ -239,7 +239,12 @@ def test_cancion_render_lee_cancion_yaml(carpeta_cancion, capsys):
     assert lineas[1] == "Estructura: intro (2) · coro (2) = 4 compases, 0:10"
     assert lineas[2] == "Acordes: intro Am G · coro Am F"
     assert lineas[3].startswith("Melodía: todavía no hay letra")
-    assert lineas[4] == "Archivos: canciones/prueba/cancion/ · prueba.mid"
+    assert lineas[4] == (
+        "Archivos: canciones/prueba/cancion/ · prueba.mid · pistas/ (8 MIDI)"
+    )
+    pistas = {p.stem for p in (carpeta_cancion / "cancion" / "pistas").iterdir()}
+    capas = {"teclado", "pad", "arpegio"}
+    assert pistas == {"bombo", "caja", "hihat", "percusion", "808"} | capas
 
 
 def test_cancion_render_con_wav(carpeta_cancion, capsys):
@@ -261,10 +266,12 @@ def test_cancion_render_con_letra_hace_guia_e_instrumental(carpeta_cancion, caps
     assert "(tu rango: E3–C4) · con letra: coro" in salida[3]
     carpeta = carpeta_cancion / "cancion"
     assert sorted(p.name for p in carpeta.iterdir()) == [
+        "pistas",
         "prueba-guia.wav",
         "prueba-instrumental.wav",
         "prueba.mid",
     ]
+    assert (carpeta / "pistas" / "melodia.mid").is_file()
     pistas = [p.name for p in mido.MidiFile(carpeta / "prueba.mid").tracks]
     assert pistas[-1] == "melodia"
 
@@ -361,3 +368,11 @@ def test_capas_y_patrones_de_seccion_invalidos(tmp_path, viejo, nuevo, mensaje):
     (tmp_path / "prueba" / "pack.yaml").write_text(texto, encoding="utf-8")
     with pytest.raises(ErrorPack, match=mensaje):
         cargar_pack("prueba", carpeta=tmp_path)
+
+
+def test_cancion_render_borra_las_pistas_de_un_render_anterior(carpeta_cancion):
+    vieja = carpeta_cancion / "cancion" / "pistas" / "violin.mid"
+    vieja.parent.mkdir(parents=True)
+    vieja.write_bytes(b"MThd")
+    assert main(["cancion", "render", "--cancion", "prueba", "--sin-wav"]) == 0
+    assert not vieja.exists()

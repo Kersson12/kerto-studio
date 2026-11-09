@@ -119,3 +119,12 @@ def test_beat_del_pack_de_reggaeton(tmp_path):
         "808",
     ]
     assert midi.length == pytest.approx(8 * 4 * 60 / 95)
+
+
+def test_un_midi_por_pista(beat, tmp_path):
+    from kerto.midi import exportar_pistas
+
+    rutas = exportar_pistas(beat, tmp_path / "pistas")
+    assert [r.name for r in rutas] == ["bombo.mid", "808.mid"]
+    solo = mido.MidiFile(rutas[1])
+    assert [p.name for p in solo.tracks] == ["Kerto · prueba · uno", "808"]

@@ -4,7 +4,8 @@ Escribe en canciones/<nombre>/cancion/:
 - <nombre>.mid: una pista por instrumento, la melodía guía con su letra y una
   marca por sección, para Waveform Free;
 - <nombre>-guia.wav: todo, con la melodía guía para cantar encima;
-- <nombre>-instrumental.wav: sin la melodía, para grabar tu voz.
+- <nombre>-instrumental.wav: sin la melodía, para grabar tu voz;
+- pistas/<pista>.mid: un MIDI por instrumento.
 Esa carpeta es de Kerto: se vuelve a generar en cada render.
 """
 
@@ -16,7 +17,7 @@ from kerto.beat import ciclo_de_acordes
 from kerto.cancion.archivo import ErrorCancion, carpeta_cancion, leer_cancion
 from kerto.cancion.melodia import crear_melodia
 from kerto.letra.letra import leer_letra
-from kerto.midi import exportar_midi
+from kerto.midi import exportar_midi, exportar_pistas
 from kerto.notacion import midi_a_nota, nota_a_midi
 from kerto.render.motor import renderizar
 from kerto.render.sonidos import cargar_sonidos
@@ -24,6 +25,7 @@ from kerto.ritmos.motor import Beat, Pista, crear_cancion
 from kerto.ritmos.pack import cargar_pack, parse_estructura
 
 CARPETA_RENDER = "cancion"
+CARPETA_PISTAS = "pistas"
 ARCHIVO_LETRA = "letra.md"
 RANGO_POR_DEFECTO = ("E3", "E4")
 MARGEN_RANGO = 2  # semitonos que la melodía puede salir de la zona cómoda
@@ -40,6 +42,7 @@ class Cancion:
     melodia: Pista | None
     rango: tuple[int, int]
     archivos: tuple[Path, ...]
+    pistas: tuple[Path, ...] = ()
 
 
 def rango_de_voz(datos: dict) -> tuple[int, int]:
@@ -86,10 +89,14 @@ def renderizar_cancion(
         melodia = None
     destino = carpeta / CARPETA_RENDER / nombre
     archivos = [exportar_midi(beat, destino.with_suffix(".mid"))]
+    carpeta_pistas = destino.parent / CARPETA_PISTAS
+    for viejo in carpeta_pistas.glob("*.mid"):  # pistas de un render anterior
+        viejo.unlink()
+    pistas = exportar_pistas(beat, carpeta_pistas)
     if wav:
         archivos += _renderizar_audio(beat, destino, str(genero), usar_surge, melodia)
     titulo = str(datos.get("nombre") or nombre)
-    return Cancion(titulo, capa, beat, melodia, rango, tuple(archivos))
+    return Cancion(titulo, capa, beat, melodia, rango, tuple(archivos), tuple(pistas))
 
 
 def _renderizar_audio(
@@ -129,9 +136,11 @@ def resumir_cancion(cancion: Cancion) -> str:
     melodia = _resumir_melodia(cancion)
     carpeta = cancion.archivos[0].parent.as_posix()
     nombres = ", ".join(ruta.name for ruta in cancion.archivos)
-    return (
-        f"{que}\n{estructura}\n{acordes}\n{melodia}\nArchivos: {carpeta}/ · {nombres}"
+    pistas = (
+        f" · {CARPETA_PISTAS}/ ({len(cancion.pistas)} MIDI)" if cancion.pistas else ""
     )
+    archivos = f"Archivos: {carpeta}/ · {nombres}{pistas}"
+    return f"{que}\n{estructura}\n{acordes}\n{melodia}\n{archivos}"
 
 
 def _resumir_melodia(cancion: Cancion) -> str:

@@ -259,3 +259,15 @@ def test_envolvente_ignora_golpes_fuera_del_audio():
     from kerto.render.motor import envolvente_agachado
 
     assert np.all(envolvente_agachado(100, 1000, [5.0, -1.0], db=8, ms=100) == 1.0)
+
+
+def test_render_con_sala(beat_corto, tmp_path):
+    from dataclasses import replace
+
+    secos = cargar_sonidos("reggaeton")
+    con_sala = {nombre: replace(s, sala=0.3) for nombre, s in secos.items()}
+    seco = renderizar(beat_corto, tmp_path / "seco.wav", secos, usar_surge=False)
+    humedo = renderizar(beat_corto, tmp_path / "sala.wav", con_sala, usar_surge=False)
+    assert humedo.pico_db == pytest.approx(-1.0, abs=0.01)
+    with wave.open(str(seco.ruta), "rb") as a, wave.open(str(humedo.ruta), "rb") as b:
+        assert a.readframes(a.getnframes()) != b.readframes(b.getnframes())
