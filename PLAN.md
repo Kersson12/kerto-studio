@@ -328,7 +328,7 @@ Le hablas a Claude Code en lenguaje normal y tu equipo usa el motor directamente
 **Lista cuando**
 
 - [ ] En una sesión nueva, "hazme un perreo en La menor a 95" crea el beat sin que escribas comandos
-- [ ] Cada herramienta del MCP responde en menos de 10 líneas
+- [x] Cada herramienta del MCP responde en menos de 10 líneas
 - [ ] Cada agente habla con la personalidad que elegiste
 - [ ] Las skills propias se activan en las pruebas de skill-creator
 
