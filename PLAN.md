@@ -276,9 +276,9 @@ El motor escucha tu voz, te dice tu tono y qué autotune necesitas, y adapta el 
 **Lista cuando**
 
 - [x] Con tonos sintéticos, el análisis acierta la nota con menos de 5 cents de error
-- [ ] Con tu voz, el informe tiene sentido para ti
-- [ ] Sabes qué autotune usar, o que no lo necesitas
-- [ ] El beat suena en tu tonalidad
+- [x] Con tu voz, el informe tiene sentido para ti
+- [x] Sabes qué autotune usar, o que no lo necesitas
+- [x] El beat suena en tu tonalidad
 
 ## Fase 3 — Canción completa
 
