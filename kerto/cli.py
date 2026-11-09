@@ -80,6 +80,10 @@ def _agregar_voz(comandos: argparse._SubParsersAction) -> None:
             help="autotune según tu voz, siempre marcado o siempre natural",
         )
     acciones.add_parser("dispositivos", help="lista los micrófonos")
+    probar = acciones.add_parser(
+        "probar", help="prueba el nivel del micrófono (6 s, no guarda nada)"
+    )
+    probar.add_argument("--dispositivo", type=int, help="número del micrófono")
 
 
 def _comando_voz(args: argparse.Namespace) -> int:
@@ -89,6 +93,17 @@ def _comando_voz(args: argparse.Namespace) -> int:
 
     if args.accion == "dispositivos":
         print("\n".join(voz.listar_entradas()))
+        return 0
+    if args.accion == "probar":
+        try:
+            nivel = voz.probar_nivel(dispositivo=args.dispositivo)
+        except ErrorVoz as error:
+            print(f"Error: {error}", file=sys.stderr)
+            return 1
+        print(
+            f"Nivel: tu voz llega a {nivel.voz_db:.0f} dBFS (pico {nivel.pico_db:.0f});"
+            f" la zona buena va de -20 a -8 · {nivel.consejo}"
+        )
         return 0
     try:
         referencia = None

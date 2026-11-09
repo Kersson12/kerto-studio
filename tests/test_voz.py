@@ -256,3 +256,15 @@ def test_resumen_avisa_si_las_notas_no_caen_en_una_escala():
 def test_las_notas_pegadas_al_limite_del_detector_son_ruido():
     informe = analizar_voz(voz_sintetica([66.0, 220.0], segundos=1.5), SR)
     assert informe.nota_grave == "A3"
+
+
+# --- Lo que no supera claramente el fondo no es la voz ---
+
+
+def test_un_tono_bajo_de_fondo_no_cuenta_como_voz():
+    sr = SR
+    t = np.arange(int(4 * sr)) / sr
+    fondo = 0.02 * np.sin(2 * np.pi * 110.0 * t)  # como el beat colado, -34 dBFS
+    voz = np.where(t >= 2, 0.5 * np.sin(2 * np.pi * 329.63 * t), 0.0)
+    informe = analizar_voz((fondo + voz).astype(np.float32), sr)
+    assert (informe.nota_grave, informe.nota_aguda) == ("E4", "E4")

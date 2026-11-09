@@ -48,8 +48,9 @@ _CONSEJOS = {
         " suena al efecto robótico del reggaetón y el trap"
     ),
     SIN_MEDIR: (
-        "graba cantando sobre el beat con audífonos:"
-        " uv run kerto voz grabar --cancion <cancion> --con-beat <beat.wav>"
+        "deja el micrófono en la zona buena (uv run kerto voz probar) y graba"
+        " sobre el beat con audífonos (uv run kerto voz grabar --cancion"
+        " <cancion> --con-beat), alargando las vocales del coro"
     ),
 }
 

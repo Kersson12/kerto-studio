@@ -347,3 +347,50 @@ def test_nombre_de_la_salida_sin_portaudio(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "sounddevice", None)
     assert muestra._nombre_salida() == "la salida de audio por defecto"
+
+
+# --- Probar el nivel del micrófono ---
+
+
+@pytest.mark.parametrize(
+    ("pico", "palabra"),
+    [(0.02, "sube"), (0.3, "bien"), (3.0, "baja")],
+)
+def test_diagnostico_de_nivel(pico, palabra):
+    from kerto.voz.muestra import diagnosticar_nivel
+
+    audio = np.clip(voz(pico=pico, segundos=3.0), -1, 1)
+    nivel = diagnosticar_nivel(audio, SR)
+    assert palabra in nivel.consejo.lower()
+    assert nivel.bien == (palabra == "bien")
+
+
+def test_diagnostico_de_nivel_sin_voz():
+    from kerto.voz.muestra import diagnosticar_nivel
+
+    nivel = diagnosticar_nivel(np.zeros(SR * 2, np.float32), SR)
+    assert not nivel.bien
+    assert "no llegó" in nivel.consejo
+
+
+def test_voz_probar_no_guarda_nada(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        "kerto.voz.muestra._grabar_con_sounddevice",
+        lambda s, f, d, g=None: voz(pico=0.3, segundos=s, sr=f)[None, :],
+    )
+    monkeypatch.setattr("kerto.voz.muestra.time.sleep", lambda _: None)
+    assert main(["voz", "probar"]) == 0
+    salida = capsys.readouterr().out
+    assert "Nivel: " in salida and "Bien" in salida
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_voz_probar_sin_microfono(capsys, monkeypatch):
+    def sin_microfono(segundos, frecuencia, dispositivo, guia=None):
+        raise OSError("sin micrófono")
+
+    monkeypatch.setattr("kerto.voz.muestra._grabar_con_sounddevice", sin_microfono)
+    monkeypatch.setattr("kerto.voz.muestra.time.sleep", lambda _: None)
+    assert main(["voz", "probar"]) == 1
+    assert "micrófono" in capsys.readouterr().err

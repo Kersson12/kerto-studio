@@ -24,6 +24,7 @@ BANDA_NOTA = 50
 DURACION_MINIMA_NOTA = 0.15
 RECORTE_BORDE = 2  # cuadros que se quitan al inicio y al final de cada nota
 PAUSA_ENTRE_TOMAS = 1.0  # segundos de separación al unir tomas
+VOZ_SOBRE_FONDO = 12  # dB que la voz debe superar al fondo para contar
 # Cantando sin música, cada toma tiene su propia referencia (corrida del La 440).
 # Si aun descontándola las notas quedan a más de UMBRAL_ESCALA cents de una
 # escala fija, no caen en ninguna: notas al azar darían unos 21.
@@ -101,7 +102,7 @@ def _mono(audio: np.ndarray) -> np.ndarray:
 
 
 def detectar_tono(audio: np.ndarray, frecuencia: int) -> Tono:
-    """pYIN cuadro a cuadro, entre C2 y C6."""
+    """pYIN cuadro a cuadro, entre C2 y C6, solo donde la voz supera el fondo."""
     senal = _mono(audio)
     if frecuencia != FRECUENCIA_ANALISIS:
         senal = librosa.resample(
@@ -114,7 +115,22 @@ def detectar_tono(audio: np.ndarray, frecuencia: int) -> Tono:
         sr=FRECUENCIA_ANALISIS,
     )
     tiempos = librosa.times_like(hz, sr=FRECUENCIA_ANALISIS)
-    return Tono(tiempos, hz, sonoro & np.isfinite(hz))
+    return Tono(tiempos, hz, sonoro & np.isfinite(hz) & _sobre_el_fondo(senal, hz.size))
+
+
+def _sobre_el_fondo(senal: np.ndarray, cuadros: int) -> np.ndarray:
+    """Cuadros que superan el fondo (el 10 % más bajo) por VOZ_SOBRE_FONDO dB.
+
+    Así el beat que se cuela desde los audífonos o un ruido tonal no se miden
+    como si fueran la voz. Si todo suena parejo (no hay fondo), no se filtra.
+    """
+    rms = librosa.feature.rms(y=senal, frame_length=2048, hop_length=512)[0]
+    niveles = 20 * np.log10(np.maximum(rms[:cuadros], 1e-10))
+    niveles = np.pad(niveles, (0, cuadros - niveles.size), mode="edge")
+    fondo, alto = np.percentile(niveles, [10, 90])
+    if alto - fondo < VOZ_SOBRE_FONDO:
+        return np.ones(cuadros, dtype=bool)
+    return niveles > fondo + VOZ_SOBRE_FONDO
 
 
 def analizar_voz(audio: np.ndarray, frecuencia: int) -> Informe:

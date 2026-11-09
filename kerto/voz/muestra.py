@@ -38,6 +38,11 @@ PICO_MINIMO_DB = -20.0
 RUIDO_MAXIMO_DB = -50.0
 DISTANCIA_MINIMA_DB = 25.0  # voz por encima del ruido de la sala
 CANTADO_MINIMO = 0.5
+SEGUNDOS_PRUEBA = 6.0
+# Lo más fuerte de la voz (percentil 95 del nivel por cuadro) debe caer aquí.
+NIVEL_VOZ_MINIMO_DB = -20.0
+NIVEL_VOZ_MAXIMO_DB = -8.0
+NIVEL_VOZ_IDEAL_DB = -14.0
 _VENTANA_PYIN = 2048
 _SALTO_PYIN = 512
 _RE_CANCION = re.compile(r"[a-z0-9][a-z0-9_-]*")
@@ -326,6 +331,60 @@ def _nombre_salida() -> str:
         return " ".join(dispositivo["name"].split())
     except Exception:  # noqa: BLE001 - es solo un aviso; sin PortAudio no hay nombre
         return "la salida de audio por defecto"
+
+
+@dataclass(frozen=True)
+class Nivel:
+    """Qué tan fuerte llega la voz y qué tocar en la configuración del micrófono."""
+
+    voz_db: float
+    pico_db: float
+    bien: bool
+    consejo: str
+
+
+def diagnosticar_nivel(audio: np.ndarray, frecuencia: int) -> Nivel:
+    """Compara lo más fuerte de la voz con la zona buena (-20 a -8 dBFS)."""
+    senal = np.asarray(audio, dtype=np.float32)
+    senal = senal.mean(axis=0) if senal.ndim == 2 else senal
+    rms = librosa.feature.rms(y=senal, frame_length=4096, hop_length=1024)[0]
+    voz = float(np.percentile([_db(float(v)) for v in rms], 95))
+    pico = _db(float(np.abs(senal).max()))
+    recortada = np.mean(np.abs(senal) >= UMBRAL_SATURACION) > MAX_SATURADAS
+    if voz < -60:
+        consejo = "tu voz no llegó al micrófono: revisa que sea el correcto (kerto voz dispositivos)"
+    elif recortada or voz > NIVEL_VOZ_MAXIMO_DB:
+        baja = max(voz - NIVEL_VOZ_IDEAL_DB, 6.0 if recortada else 0.0)
+        consejo = (
+            f"baja unos {baja:.0f} dB: menos volumen o amplificación del micrófono"
+        )
+    elif voz < NIVEL_VOZ_MINIMO_DB:
+        consejo = (
+            f"sube unos {NIVEL_VOZ_IDEAL_DB - voz:.0f} dB: más volumen o amplificación"
+            " del micrófono, o acércate a un palmo"
+        )
+    else:
+        consejo = "Bien: ya puedes grabar"
+    bien = consejo.startswith("Bien")
+    return Nivel(voz, pico, bien, consejo)
+
+
+def probar_nivel(
+    segundos: float = SEGUNDOS_PRUEBA,
+    dispositivo: int | None = None,
+    avisar: Callable[[str], None] = print,
+) -> Nivel:
+    """Graba unos segundos, mide el nivel y no guarda nada."""
+    avisar("Canta la línea más fuerte del coro, como en la toma de verdad.")
+    for numero in range(CUENTA_ATRAS, 0, -1):
+        avisar(f"{numero}…")
+        time.sleep(1)
+    avisar(f"Probando {segundos:g} s…")
+    try:
+        audio = _grabar_con_sounddevice(segundos, FRECUENCIA_GRABACION, dispositivo)
+    except Exception as error:
+        raise ErrorVoz(f"no se pudo grabar del micrófono: {error}") from error
+    return diagnosticar_nivel(audio, FRECUENCIA_GRABACION)
 
 
 def listar_entradas() -> list[str]:
