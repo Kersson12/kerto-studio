@@ -305,7 +305,7 @@ La canción entera queda armada: estructura, acordes, bajo, melodía guía dentr
 - [x] Un test garantiza que la melodía nunca sale de tu rango
 - [x] Un segundo pack de género genera una canción sin tocar el motor
 - [x] Tienes la letra completa y aprobada
-- [ ] Te sabes la melodía del coro
+- [x] Te sabes la melodía del coro
 
 ## Fase 4 — Claude Code conectado: MCP, comandos y skills
 
