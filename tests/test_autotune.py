@@ -4,7 +4,7 @@ from kerto.voz.analisis import ErrorVoz, Informe
 from kerto.voz.autotune import EXIGENCIAS, recomendar_autotune
 
 
-def informe(desafinacion, temblor=5.0):
+def informe(desafinacion, temblor=5.0, en_escala=True):
     return Informe(
         segundos=30.0,
         cantado=0.8,
@@ -16,6 +16,10 @@ def informe(desafinacion, temblor=5.0):
         desafinacion=desafinacion,
         temblor=temblor,
         tonalidades=("Gm", "G#m", "F#m"),
+        notas=12,
+        corrimiento=0.0,
+        relativa=5.0,
+        en_escala=en_escala,
     )
 
 
@@ -90,3 +94,12 @@ def test_exigencias_disponibles():
 def test_rechaza_opciones_desconocidas(argumentos):
     with pytest.raises(ErrorVoz):
         recomendar_autotune(informe(10), **argumentos)
+
+
+def test_sin_escala_fija_todavia_no_se_puede_medir():
+    recomendacion = recomendar_autotune(informe(40, en_escala=False))
+    assert recomendacion.nivel == "sin_medir"
+    assert "--con-beat" in recomendacion.consejo
+    assert recomendacion.resumen().startswith("Autotune: todavía no se puede medir")
+    marcado = recomendar_autotune(informe(40, en_escala=False), estilo="marcado")
+    assert marcado.nivel == "marcado"

@@ -17,7 +17,17 @@ NOTA_MINIMA = "C2"  # 65 Hz: más grave que casi cualquier voz
 NOTA_MAXIMA = "C6"  # 1047 Hz
 PERCENTIL_EXTREMO = 2  # ignora el 2 % más grave y más agudo (ruidos, quiebres)
 PERCENTIL_COMODO = 20  # la zona cómoda: del 20 % al 80 % de lo cantado
-SALTO_DE_NOTA = 50  # cents entre cuadros: más que esto es otra nota
+# Una nota sostenida: cuadros con voz que no se alejan más de BANDA_NOTA cents
+# de su mediana, durante al menos DURACION_MINIMA_NOTA. Los deslizamientos
+# entre notas quedan fuera y no cuentan como desafinación ni temblor.
+BANDA_NOTA = 50
+DURACION_MINIMA_NOTA = 0.15
+RECORTE_BORDE = 2  # cuadros que se quitan al inicio y al final de cada nota
+PAUSA_ENTRE_TOMAS = 1.0  # segundos de separación al unir tomas
+# Cantando sin música, cada toma tiene su propia referencia (corrida del La 440).
+# Si aun descontándola las notas quedan a más de UMBRAL_ESCALA cents de una
+# escala fija, no caen en ninguna: notas al azar darían unos 21.
+UMBRAL_ESCALA = 15
 TONALIDADES_MENOR = (
     "Cm",
     "C#m",
@@ -46,6 +56,7 @@ class Tono:
     tiempos: np.ndarray
     hz: np.ndarray
     sonoro: np.ndarray
+    toma: np.ndarray | None = None  # número de toma de cada cuadro, al unir varias
 
 
 @dataclass(frozen=True)
@@ -62,6 +73,10 @@ class Informe:
     desafinacion: float
     temblor: float
     tonalidades: tuple[str, ...]
+    notas: int
+    corrimiento: float  # cents de tu referencia propia respecto del La 440
+    relativa: float  # desafinación entre tus notas, descontando el corrimiento
+    en_escala: bool  # si tus notas caen en una escala fija
 
 
 def hz_a_midi(hz: float | np.ndarray) -> float | np.ndarray:
@@ -112,10 +127,22 @@ def informe_desde_tono(tono: Tono, segundos: float) -> Informe:
     """El informe a partir de un tono ya detectado (pYIN corre una sola vez)."""
     if not tono.sonoro.any():
         raise ErrorVoz("no se detectó voz: canta más cerca del micrófono o más fuerte")
-    midi = hz_a_midi(tono.hz[tono.sonoro])
+    por_toma = [notas_sostenidas(parte) for parte in _por_toma(tono)]
+    notas = [nota for notas_toma in por_toma for nota in notas_toma]
+    if not notas:
+        raise ErrorVoz(
+            "no hubo notas sostenidas para medir la afinación:"
+            " canta frases con algunas notas un poco más largas"
+        )
+    midi = np.concatenate(notas) / 100
     grave, aguda = np.percentile(midi, [PERCENTIL_EXTREMO, 100 - PERCENTIL_EXTREMO])
     comoda = np.percentile(midi, [PERCENTIL_COMODO, 100 - PERCENTIL_COMODO])
     centro = float(np.median(midi))
+    centros = np.array([np.median(nota) for nota in notas])
+    pesos = np.array([nota.size for nota in notas])
+    referencias = [_referencia(notas_toma) for notas_toma in por_toma if notas_toma]
+    cuadros = [peso for _, _, peso in referencias]
+    relativa = float(np.average([r for _, r, _ in referencias], weights=cuadros))
     return Informe(
         segundos=segundos,
         cantado=float(tono.sonoro.mean()),
@@ -124,22 +151,91 @@ def informe_desde_tono(tono: Tono, segundos: float) -> Informe:
         comoda_grave=midi_a_nota(round(comoda[0])),
         comoda_aguda=midi_a_nota(round(comoda[1])),
         centro=midi_a_nota(round(centro)),
-        desafinacion=float(np.mean(np.abs(midi - np.round(midi))) * 100),
-        temblor=_temblor(midi),
+        desafinacion=float(np.average(np.abs(_a_la_escala(centros)), weights=pesos)),
+        temblor=float(np.std(np.concatenate([n - np.median(n) for n in notas]))),
         tonalidades=tonalidades_comodas(centro),
+        notas=len(notas),
+        corrimiento=float(np.average([c for c, _, _ in referencias], weights=cuadros)),
+        relativa=relativa,
+        en_escala=relativa < UMBRAL_ESCALA,
     )
 
 
-def _temblor(midi: np.ndarray) -> float:
-    """Cuánto se mueve el tono dentro de cada nota sostenida, en cents (desvío estándar)."""
-    cents = midi * 100
-    cortes = np.nonzero(np.abs(np.diff(cents)) > SALTO_DE_NOTA)[0] + 1
-    desvios = [
-        tramo - np.median(tramo) for tramo in np.split(cents, cortes) if tramo.size > 1
+def _a_la_escala(cents: np.ndarray) -> np.ndarray:
+    """Cents hasta el semitono más cercano, de -50 a +50."""
+    return (cents + 50) % 100 - 50
+
+
+def _referencia(notas: list[np.ndarray]) -> tuple[float, float, int]:
+    """(corrimiento, desafinación relativa, cuadros) de una toma.
+
+    Prueba correr la escala de -50 a +50 cents y se queda con el corrimiento
+    que deja las notas más cerca de sus semitonos.
+    """
+    centros = np.array([np.median(nota) for nota in notas])
+    pesos = np.array([nota.size for nota in notas], dtype=float)
+    corrimientos = np.arange(-50.0, 50.0)
+    errores = (
+        np.abs(_a_la_escala(centros[None, :] - corrimientos[:, None])) @ pesos
+    ) / pesos.sum()
+    mejor = int(np.argmin(errores))
+    return float(corrimientos[mejor]), float(errores[mejor]), int(pesos.sum())
+
+
+def _por_toma(tono: Tono) -> list[Tono]:
+    if tono.toma is None:
+        return [tono]
+    return [
+        Tono(tono.tiempos[cual], tono.hz[cual], tono.sonoro[cual])
+        for cual in (tono.toma == numero for numero in np.unique(tono.toma))
     ]
-    if not desvios:
-        return 0.0
-    return float(np.std(np.concatenate(desvios)))
+
+
+def notas_sostenidas(tono: Tono) -> list[np.ndarray]:
+    """Cents de cada nota sostenida, sin los bordes ni los deslizamientos."""
+    if tono.tiempos.size < 2:
+        return []
+    paso = float(np.median(np.diff(tono.tiempos)))
+    tiempos = tono.tiempos[tono.sonoro]
+    cents = hz_a_midi(tono.hz[tono.sonoro]) * 100
+    tramos: list[list[float]] = []
+    actual: list[float] = []
+    anterior = -math.inf
+    for tiempo, valor in zip(tiempos, cents, strict=True):
+        corte = tiempo - anterior > 1.5 * paso
+        if actual and (corte or abs(valor - np.median(actual)) > BANDA_NOTA):
+            tramos.append(actual)
+            actual = []
+        actual.append(float(valor))
+        anterior = tiempo
+    tramos.append(actual)
+    minimo = max(DURACION_MINIMA_NOTA / paso, 2 * RECORTE_BORDE + 1)
+    return [
+        np.array(tramo[RECORTE_BORDE:-RECORTE_BORDE])
+        for tramo in tramos
+        if len(tramo) >= minimo and _es_plano(tramo)
+    ]
+
+
+def _es_plano(tramo: list[float]) -> bool:
+    """Una nota no avanza: el vibrato oscila, pero un deslizamiento sube o baja."""
+    pendiente = np.polyfit(np.arange(len(tramo)), tramo, 1)[0]
+    return abs(pendiente) * len(tramo) <= BANDA_NOTA
+
+
+def unir_tonos(tonos: list[Tono]) -> Tono:
+    """Une varias tomas en un solo tono, separadas en el tiempo para no mezclar notas."""
+    tiempos, inicio = [], 0.0
+    for tono in tonos:
+        tiempos.append(tono.tiempos + inicio)
+        fin = float(tono.tiempos[-1]) if tono.tiempos.size else 0.0
+        inicio += fin + PAUSA_ENTRE_TOMAS
+    return Tono(
+        np.concatenate(tiempos),
+        np.concatenate([tono.hz for tono in tonos]),
+        np.concatenate([tono.sonoro for tono in tonos]),
+        np.concatenate([np.full(t.hz.size, n) for n, t in enumerate(tonos)]),
+    )
 
 
 def tonalidades_comodas(centro: float, modo: str = "menor") -> tuple[str, ...]:
@@ -162,9 +258,14 @@ def resumir_informe(informe: Informe) -> str:
         f" · centro: {informe.centro}"
     )
     desafinacion = math.floor(informe.desafinacion + 0.5)
+    relativa = math.floor(informe.relativa + 0.5)
+    corrimiento = math.floor(informe.corrimiento + 0.5)
     temblor = math.floor(informe.temblor + 0.5)
     afinacion = (
-        f"Afinación: {desafinacion} cents de desviación media · temblor {temblor} cents"
+        f"Afinación: {desafinacion} cents del La 440 · {relativa} entre tus notas"
+        f" (tu referencia: {corrimiento:+d}) · temblor {temblor} cents"
     )
+    if not informe.en_escala:
+        afinacion += " · tus notas no caen en una escala fija"
     tonalidades = f"Tonalidades cómodas (menor): {', '.join(informe.tonalidades)}"
     return f"{voz}\n{rango}\n{afinacion}\n{tonalidades}"

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from kerto.voz.analisis import ErrorVoz, Informe
 
 NIVELES = ("ninguno", "suave", "marcado")
+SIN_MEDIR = "sin_medir"
 TEMBLOR_ALTO = 30.0  # cents de desvío dentro de cada nota
 
 
@@ -32,11 +33,24 @@ _NOMBRES = {
     "ninguno": "sin autotune",
     "suave": "corrección suave",
     "marcado": "corrección marcada",
+    SIN_MEDIR: "todavía no se puede medir",
 }
 _CONSEJOS = {
-    "ninguno": "graba sin autotune; si alguna nota se escapa, se corrige a mano en la mezcla",
-    "suave": "Graillon o MAutoPitch (gratis) con retune lento, para que corrija sin que se note",
-    "marcado": "Graillon o MAutoPitch con retune rápido: suena al efecto robótico del reggaetón y el trap",
+    "ninguno": (
+        "graba sin autotune; si alguna nota se escapa, se corrige a mano en la mezcla"
+    ),
+    "suave": (
+        "Graillon o MAutoPitch (gratis) con retune lento,"
+        " para que corrija sin que se note"
+    ),
+    "marcado": (
+        "Graillon o MAutoPitch con retune rápido:"
+        " suena al efecto robótico del reggaetón y el trap"
+    ),
+    SIN_MEDIR: (
+        "graba cantando sobre el beat con audífonos:"
+        " uv run kerto voz grabar --cancion <cancion> --con-beat <beat.wav>"
+    ),
 }
 
 
@@ -64,6 +78,11 @@ def recomendar_autotune(
         raise ErrorVoz(f"estilo desconocido {estilo!r}: usa {', '.join(ESTILOS)}")
     if estilo == "marcado":
         return _recomendacion("marcado", "elegiste el efecto marcado como estilo")
+    if not informe.en_escala:
+        return _recomendacion(
+            SIN_MEDIR,
+            "tus notas no caen en una escala fija, así que no hay contra qué medir",
+        )
     umbrales = EXIGENCIAS[exigencia]
     cents = round(informe.desafinacion)
     if informe.desafinacion < umbrales.suave:

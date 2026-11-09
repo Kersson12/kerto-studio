@@ -125,7 +125,7 @@ def test_voz_analizar_explica_los_errores(tmp_path, capsys):
 def test_voz_grabar_guarda_la_muestra_y_la_analiza(tmp_path, capsys, monkeypatch):
     pedidos = []
 
-    def grabar_falso(segundos, frecuencia, dispositivo):
+    def grabar_falso(segundos, frecuencia, dispositivo, guia=None):
         pedidos.append((segundos, frecuencia, dispositivo))
         return con_silencio(voz(sr=frecuencia), sr=frecuencia)[None, :]
 
@@ -146,7 +146,7 @@ def test_voz_grabar_en_la_carpeta_de_la_cancion(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(
         "kerto.voz.muestra._grabar_con_sounddevice",
-        lambda s, f, d: con_silencio(voz(sr=f), sr=f)[None, :],
+        lambda s, f, d, g=None: con_silencio(voz(sr=f), sr=f)[None, :],
     )
     monkeypatch.setattr("kerto.voz.muestra.time.sleep", lambda _: None)
     assert main(["voz", "grabar", "--cancion", "luna-negra"]) == 0
@@ -198,7 +198,7 @@ def test_grabar_dos_veces_en_el_mismo_segundo_no_pisa(tmp_path, monkeypatch):
     monkeypatch.setattr(muestra, "datetime", Reloj)
     monkeypatch.setattr(muestra.time, "sleep", lambda _: None)
     monkeypatch.setattr(
-        muestra, "_grabar_con_sounddevice", lambda s, f, d: voz(sr=f)[None, :]
+        muestra, "_grabar_con_sounddevice", lambda s, f, d, g=None: voz(sr=f)[None, :]
     )
     rutas = [
         muestra.grabar_muestra(tmp_path, 1, avisar=lambda _: None) for _ in range(3)
@@ -232,3 +232,109 @@ def test_funciones_de_sounddevice(monkeypatch):
     assert muestra.listar_entradas() == [
         "1: Micrófono (USB) (el que se usa por defecto)"
     ]
+
+
+# --- Varias tomas ---
+
+
+def tomas_en(carpeta, *tomas):
+    carpeta.mkdir(parents=True, exist_ok=True)
+    return [
+        escribir_wav(carpeta / f"toma-{n}.wav", np.asarray(audio)[None, :], SR)
+        for n, audio in enumerate(tomas, 1)
+    ]
+
+
+def test_voz_analizar_varias_tomas_las_combina(tmp_path, capsys):
+    rutas = tomas_en(tmp_path, con_silencio(voz(220.0)), con_silencio(voz(261.63)))
+    assert main(["voz", "analizar", *map(str, rutas)]) == 0
+    lineas = capsys.readouterr().out.strip().splitlines()
+    assert lineas[0].startswith("Tomas: 2 · centro de A3 a C4 · nota aguda de A3 a C4")
+    assert lineas[1].startswith("Voz: 6.0 s")
+    assert "Rango: A3–C4" in lineas[2]
+    assert lineas[5].startswith("Autotune: ")
+    assert lineas[7].endswith("tomas.informe.json")
+    datos = json.loads((tmp_path / "tomas.informe.json").read_text(encoding="utf-8"))
+    assert datos["archivos"] == ["toma-1.wav", "toma-2.wav"]
+    assert [t["informe"]["centro"] for t in datos["tomas"]] == ["A3", "C4"]
+    assert (tmp_path / "toma-1.informe.json").is_file()
+
+
+def test_voz_analizar_todas_las_tomas_de_la_cancion(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    tomas_en(tmp_path / "canciones/luna/voz", con_silencio(voz()), con_silencio(voz()))
+    assert main(["voz", "analizar", "--cancion", "luna"]) == 0
+    assert capsys.readouterr().out.startswith("Tomas: 2 ")
+    assert main(["voz", "analizar", "--cancion", "vacia"]) == 1
+    assert "no hay tomas" in capsys.readouterr().err
+    assert main(["voz", "analizar"]) == 1
+
+
+def test_consejos_agrupados_y_tomas_descartadas(tmp_path, capsys):
+    saturada = np.clip(con_silencio(voz(pico=3.0)), -1, 1)
+    rutas = tomas_en(tmp_path, saturada, saturada, np.zeros(SR, np.float32))
+    assert main(["voz", "analizar", *map(str, rutas)]) == 0
+    salida = capsys.readouterr().out
+    assert salida.startswith("Tomas: 2 ")
+    assert (
+        "se saturó: baja la ganancia del micrófono o aléjate un poco (2 de 2 tomas)"
+        in salida
+    )
+    assert "toma-3.wav: no se detectó voz" in salida
+
+
+def test_ninguna_toma_sirve(tmp_path, capsys):
+    rutas = tomas_en(tmp_path, np.zeros(SR, np.float32), np.zeros(SR, np.float32))
+    assert main(["voz", "analizar", *map(str, rutas)]) == 1
+    assert "ninguna toma" in capsys.readouterr().err
+
+
+# --- Grabar con el beat en los audífonos ---
+
+
+def test_voz_grabar_con_beat(tmp_path, capsys, monkeypatch):
+    beat = escribir_wav(tmp_path / "beat.wav", np.full((2, 22050), 0.1), 22050)
+    guias = []
+
+    def grabar_falso(segundos, frecuencia, dispositivo, guia=None):
+        guias.append(guia)
+        return con_silencio(voz(sr=frecuencia), sr=frecuencia)[None, :]
+
+    monkeypatch.setattr("kerto.voz.muestra._grabar_con_sounddevice", grabar_falso)
+    monkeypatch.setattr("kerto.voz.muestra.time.sleep", lambda _: None)
+    salida = tmp_path / "voz"
+    argumentos = ["voz", "grabar", "--segundos", "3", "--salida", str(salida)]
+    assert main([*argumentos, "--con-beat", str(beat)]) == 0
+    [guia] = guias
+    assert guia.shape == (3 * 44100, 2)
+    assert "audífonos" in capsys.readouterr().out
+    [informe] = salida.glob("*.informe.json")
+    assert json.loads(informe.read_text(encoding="utf-8"))["referencia"] == "beat.wav"
+    assert main([*argumentos, "--con-beat", str(tmp_path / "no.wav")]) == 1
+
+
+def test_reanalizar_conserva_la_referencia(tmp_path):
+    [ruta] = tomas_en(tmp_path, con_silencio(voz()))
+    muestra = analizar_muestra(*leer_audio(ruta))
+    guardar_informe(muestra, ruta, referencia="beat.wav")
+    json_ruta = guardar_informe(muestra, ruta)
+    assert json.loads(json_ruta.read_text(encoding="utf-8"))["referencia"] == "beat.wav"
+
+
+def test_playrec_con_la_guia(monkeypatch):
+    import sys
+    import types
+
+    from kerto.voz import muestra
+
+    llamadas = []
+    falso = types.ModuleType("sounddevice")
+    falso.playrec = lambda datos, samplerate, channels, dtype, device: (
+        llamadas.append(device) or np.zeros((len(datos), channels), dtype)
+    )
+    falso.wait = lambda: None
+    monkeypatch.setitem(sys.modules, "sounddevice", falso)
+    guia = np.zeros((1000, 2), np.float32)
+    assert muestra._grabar_con_sounddevice(1, 1000, 3, guia).shape == (1, 1000)
+    assert muestra._grabar_con_sounddevice(1, 1000, None, guia).shape == (1, 1000)
+    assert llamadas == [(3, None), None]

@@ -48,8 +48,18 @@ def _agregar_voz(comandos: argparse._SubParsersAction) -> None:
     grabar.add_argument(
         "--dispositivo", type=int, help="número del micrófono (kerto voz dispositivos)"
     )
-    analizar = acciones.add_parser("analizar", help="analiza un WAV ya grabado")
-    analizar.add_argument("archivo", type=Path, help="WAV, FLAC, OGG o MP3")
+    grabar.add_argument(
+        "--con-beat",
+        type=Path,
+        help="WAV que suena en los audífonos mientras cantas (la referencia)",
+    )
+    analizar = acciones.add_parser(
+        "analizar", help="analiza una o varias tomas; varias se combinan"
+    )
+    analizar.add_argument("archivos", type=Path, nargs="*", help="WAV, FLAC, OGG o MP3")
+    analizar.add_argument(
+        "--cancion", help="analiza todas las tomas de canciones/<cancion>/voz"
+    )
     for accion in (grabar, analizar):
         accion.add_argument(
             "--exigencia",
@@ -75,19 +85,51 @@ def _comando_voz(args: argparse.Namespace) -> int:
         print("\n".join(voz.listar_entradas()))
         return 0
     try:
+        referencia = None
         if args.accion == "grabar":
             carpeta = args.salida or voz.carpeta_de_cancion(args.cancion or "borrador")
-            archivo = voz.grabar_muestra(carpeta, args.segundos, args.dispositivo)
+            archivo = voz.grabar_muestra(
+                carpeta, args.segundos, args.dispositivo, beat=args.con_beat
+            )
+            referencia = args.con_beat.name if args.con_beat else None
+            rutas = [archivo]
         else:
-            archivo = args.archivo
-        resultado = voz.analizar_muestra(*voz.leer_audio(archivo))
+            rutas = list(args.archivos)
+            if args.cancion:
+                rutas += sorted(voz.carpeta_de_cancion(args.cancion).glob("*.wav"))
+            if not rutas:
+                raise ErrorVoz("no hay tomas: pasa archivos o --cancion <nombre>")
+        if len(rutas) > 1 or args.accion == "analizar" and args.cancion:
+            return _varias_tomas(voz, rutas, args)
+        resultado = voz.analizar_muestra(*voz.leer_audio(rutas[0]))
         autotune = recomendar_autotune(resultado.informe, args.exigencia, args.estilo)
-        informe = voz.guardar_informe(resultado, archivo, autotune)
+        informe = voz.guardar_informe(resultado, rutas[0], autotune, referencia)
     except ErrorVoz as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
     consejos = " · ".join(resultado.consejos) or "la grabación está limpia"
     print(resumir_informe(resultado.informe))
+    print(autotune.resumen())
+    print(f"Consejos: {consejos}")
+    print(f"Informe completo: {informe.as_posix()}")
+    return 0
+
+
+def _varias_tomas(voz, rutas: list[Path], args: argparse.Namespace) -> int:
+    from kerto.voz.analisis import resumir_informe
+    from kerto.voz.autotune import recomendar_autotune
+
+    tomas = voz.analizar_tomas(rutas)
+    for ruta, muestra in zip(tomas.archivos, tomas.muestras, strict=True):
+        propia = recomendar_autotune(muestra.informe, args.exigencia, args.estilo)
+        voz.guardar_informe(muestra, ruta, propia)
+    autotune = recomendar_autotune(tomas.informe, args.exigencia, args.estilo)
+    informe = voz.guardar_tomas(tomas, autotune)
+    consejos = (
+        " · ".join(voz.consejos_de_tomas(tomas)) or "las grabaciones están limpias"
+    )
+    print(voz.resumir_consistencia(tomas))
+    print(resumir_informe(tomas.informe))
     print(autotune.resumen())
     print(f"Consejos: {consejos}")
     print(f"Informe completo: {informe.as_posix()}")
