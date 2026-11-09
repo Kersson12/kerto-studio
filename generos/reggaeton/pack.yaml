@@ -85,3 +85,20 @@ acordes:
   teclado: {patron: "x..x ..x. x..x ..x.", octava: 4, largo: 1/8, programa: 4}
   # Notas del acorde saltando en corcheas. programa 81 = Lead 2 (GM, desde 0).
   arpegio: {patron: "x.x. x.x. x.x. x.x.", octava: 4, largo: 1/8, programa: 81, arpegio: true}
+
+# Secciones de la canción (Fase 3). Cada parte puede cambiar la progresión y
+# callar instrumentos; el ritmo sale de la variación elegida.
+# progresion: acordes de la sección (si falta, los de la variación)
+# sin: instrumentos que se callan · acordes: false apaga la capa de acordes
+secciones:
+  intro: {sin: [bombo, caja, 808]} # entra suave: hi-hat, conga y acordes
+  verso: {}
+  precoro: {progresion: VI VII, sin: [bombo]} # sin bombo para crear tensión
+  coro: {progresion: i VI III VII} # en Am: Am F C G, el momento más fuerte
+  puente: {progresion: iv v, sin: [bombo, caja]} # baja la energía antes del final
+  outro: {sin: [bombo, caja, 808]}
+
+# Orden por defecto de una canción: parte y compases (48 compases, unos 2 minutos
+# a 95 BPM). Antes de cada coro y al final hay un corte; las demás partes cierran
+# con relleno.
+estructura: [intro 4, verso 8, precoro 4, coro 8, verso 8, coro 8, puente 4, outro 4]

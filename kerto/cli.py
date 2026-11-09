@@ -34,6 +34,16 @@ def crear_parser() -> argparse.ArgumentParser:
     )
     _agregar_beat(comandos)
     _agregar_voz(comandos)
+    cancion = comandos.add_parser("cancion", help="arma la canción completa")
+    acciones = cancion.add_subparsers(dest="accion", metavar="accion", required=True)
+    render = acciones.add_parser(
+        "render", help="MIDI (y WAV) de la canción entera desde su cancion.yaml"
+    )
+    render.add_argument("--cancion", required=True, help="nombre, como luna-negra")
+    render.add_argument("--sin-wav", action="store_true", help="solo MIDI")
+    render.add_argument(
+        "--sin-surge", action="store_true", help="usa solo el sintetizador interno"
+    )
     return parser
 
 
@@ -144,6 +154,20 @@ def _comando_voz(args: argparse.Namespace) -> int:
     print(autotune.resumen())
     print(f"Consejos: {consejos}")
     print(f"Informe completo: {informe.as_posix()}")
+    return 0
+
+
+def _comando_cancion(args: argparse.Namespace) -> int:
+    from kerto.cancion.render import renderizar_cancion, resumir_cancion
+
+    try:
+        cancion = renderizar_cancion(
+            args.cancion, wav=not args.sin_wav, usar_surge=not args.sin_surge
+        )
+    except ValueError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    print(resumir_cancion(cancion))
     return 0
 
 
@@ -262,6 +286,8 @@ def main(argv: list[str] | None = None) -> int:
         return _comando_notacion(args)
     if args.comando == "beat":
         return _comando_beat(args)
+    if args.comando == "cancion":
+        return _comando_cancion(args)
     if args.comando == "voz":
         return _comando_voz(args)
     parser.print_help()

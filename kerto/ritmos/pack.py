@@ -1,6 +1,7 @@
 """Packs de género: leen generos/<genero>/pack.yaml y validan instrumentos y patrones."""
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
@@ -77,6 +78,16 @@ class CapaAcordes:
 
 
 @dataclass(frozen=True)
+class Seccion:
+    """Cómo suena una parte de la canción (verso, coro...) con la variación elegida."""
+
+    nombre: str
+    progresion: str | None = None  # si falta, la de la variación
+    sin: tuple[str, ...] = ()  # instrumentos que se callan
+    acordes: bool = True  # si suena la capa de acordes
+
+
+@dataclass(frozen=True)
 class Pack:
     """Todo lo que el motor necesita saber de un género."""
 
@@ -95,6 +106,8 @@ class Pack:
     variaciones: tuple[Variacion, ...]
     transiciones: dict[str, dict[str, Patron]]
     acordes: dict[str, CapaAcordes]
+    secciones: dict[str, Seccion] = field(default_factory=dict)
+    estructura: tuple[tuple[str, int], ...] = ()
 
     @property
     def largo_compas(self) -> Fraction:
@@ -149,6 +162,8 @@ def _armar_pack(datos: dict[str, Any]) -> Pack:
     tiempo, fuerza = _humanizacion(datos.get("humanizar") or {})
     instrumentos = _instrumentos(datos["instrumentos"])
     patrones = _LectorDePatrones(instrumentos, paso, compas)
+    secciones = _secciones(datos.get("secciones") or {}, instrumentos, tonalidad)
+    estructura = datos.get("estructura")
     return Pack(
         nombre=str(datos["nombre"]),
         descripcion=str(datos.get("descripcion", "")),
@@ -165,7 +180,80 @@ def _armar_pack(datos: dict[str, Any]) -> Pack:
         variaciones=_variaciones(datos["variaciones"], patrones, tonalidad),
         transiciones=_transiciones(datos.get("transiciones") or {}, patrones),
         acordes=_capas(datos.get("acordes") or {}, patrones),
+        secciones=secciones,
+        estructura=()
+        if estructura is None
+        else parse_estructura(estructura, secciones),
     )
+
+
+_RE_TRAMO = re.compile(r"\s*([a-z][a-z0-9_-]*)\s+([1-9][0-9]*)\s*")
+
+
+def parse_estructura(
+    valor: object, secciones: dict[str, "Seccion"]
+) -> tuple[tuple[str, int], ...]:
+    """[intro 4, verso 8, coro 8] -> (('intro', 4), ('verso', 8), ('coro', 8))."""
+    if not isinstance(valor, list) or not valor:
+        raise ErrorPack(
+            "la estructura debe ser una lista como [intro 4, verso 8, coro 8]"
+        )
+    tramos = []
+    for elemento in valor:
+        coincidencia = _RE_TRAMO.fullmatch(str(elemento))
+        if coincidencia is None:
+            raise ErrorPack(
+                f"parte inválida {elemento!r} en la estructura:"
+                " usa nombre y compases, como coro 8"
+            )
+        nombre, compases = coincidencia.group(1), int(coincidencia.group(2))
+        if nombre not in secciones:
+            disponibles = ", ".join(secciones) or "ninguna"
+            raise ErrorPack(
+                f"la estructura usa la sección {nombre!r}, que no está en secciones:"
+                f" usa {disponibles}"
+            )
+        tramos.append((nombre, compases))
+    return tuple(tramos)
+
+
+def _secciones(
+    datos: object, instrumentos: dict[str, "Instrumento"], tonalidad: str
+) -> dict[str, Seccion]:
+    if not isinstance(datos, dict):
+        raise ErrorPack("secciones debe ser un mapa nombre: sección, como coro: {}")
+    secciones = {}
+    for clave, valor in datos.items():
+        nombre = str(clave)
+        valor = {} if valor is None else valor
+        if not isinstance(valor, dict):
+            raise ErrorPack(
+                f"la sección {nombre!r} debe ser un mapa, como {{sin: [bombo]}}"
+            )
+        grados = valor.get("progresion")
+        if grados is not None:
+            _validar_progresion(tonalidad, str(grados), f"la sección {nombre!r}")
+        sin = valor.get("sin", [])
+        desconocidos = (
+            [str(i) for i in sin if str(i) not in instrumentos]
+            if isinstance(sin, list)
+            else [str(sin)]
+        )
+        if desconocidos:
+            raise ErrorPack(
+                f"la sección {nombre!r} calla instrumentos que no existen:"
+                f" {', '.join(desconocidos)}"
+            )
+        acordes = valor.get("acordes", True)
+        if not isinstance(acordes, bool):
+            raise ErrorPack(f"acordes de {nombre!r} debe ser true o false")
+        secciones[nombre] = Seccion(
+            nombre,
+            None if grados is None else str(grados),
+            tuple(str(i) for i in sin),
+            acordes,
+        )
+    return secciones
 
 
 def _entero_positivo(valor: object) -> bool:

@@ -125,7 +125,7 @@ def resumir(beats: Beats) -> str:
         f" · {primero.compases} compases de {primero.compas}"
         f" · sonido: {_sonido(beats.motores)}"
     )
-    acordes = " / ".join(" ".join(_ciclo(b.acordes)) for b in beats.beats)
+    acordes = " / ".join(" ".join(ciclo_de_acordes(b.acordes)) for b in beats.beats)
     tempo = f"BPM: {primero.bpm} · Tonalidad: {primero.tonalidad} · acordes: {acordes}"
     return f"{archivos}\n{genero}\n{tempo}"
 
@@ -142,7 +142,7 @@ def _sonido(motores: dict[str, str]) -> str:
     )
 
 
-def _ciclo(acordes: tuple[str, ...]) -> tuple[str, ...]:
+def ciclo_de_acordes(acordes: tuple[str, ...]) -> tuple[str, ...]:
     """La progresión sin repetir: (Am F C G Am F C G) -> (Am F C G)."""
     for periodo in range(1, len(acordes) + 1):
         if all(acordes[i] == acordes[i % periodo] for i in range(len(acordes))):

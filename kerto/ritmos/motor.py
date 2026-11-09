@@ -60,10 +60,20 @@ class Beat:
     compases: int
     acordes: tuple[str, ...]
     pistas: tuple[Pista, ...]
+    secciones: tuple["Marca", ...] = ()  # solo en una canción completa
 
     @property
     def duracion(self) -> Fraction:
         return self.compases * duracion_compas(self.compas)
+
+
+@dataclass(frozen=True)
+class Marca:
+    """Dónde empieza una parte de la canción, en compases desde 0."""
+
+    nombre: str
+    compas: int
+    compases: int
 
 
 def estructura(compases: int, frase: int) -> tuple[str, ...]:
@@ -102,11 +112,7 @@ def crear_beat(
     `acordes` suma una capa de acordes del pack (pad, teclado, arpegio...).
     """
     elegida = _elegir_variacion(pack, variacion)
-    tempo = pack.bpm_defecto if bpm is None else bpm
-    if not BPM_MINIMO <= tempo <= BPM_MAXIMO:
-        raise ErrorBeat(
-            f"bpm {tempo} fuera de rango: usa de {BPM_MINIMO} a {BPM_MAXIMO}"
-        )
+    tempo = _tempo(pack, bpm)
     tipos = estructura(compases, pack.frase)
     clave, por_compas = _acordes(
         tonalidad or pack.tonalidad, progresion or elegida.progresion, compases
@@ -119,14 +125,6 @@ def crear_beat(
     if capa is not None:
         notas_capa = _notas_capa(pack, capa, tipos, por_compas)
         crudas.append((capa.nombre, False, capa.programa, notas_capa))
-    pistas = []
-    for nombre, bateria, programa, notas in crudas:
-        if humanizar:
-            azar = random.Random(f"{semilla}:{elegida.nombre}:{nombre}")
-            notas = _humanizar(
-                notas, azar, pack.humanizar_tiempo, pack.humanizar_fuerza
-            )
-        pistas.append(Pista(nombre, bateria, programa, _sin_solapes(notas)))
     return Beat(
         genero=pack.nombre,
         variacion=elegida.nombre,
@@ -135,8 +133,124 @@ def crear_beat(
         compas=pack.compas,
         compases=compases,
         acordes=tuple(str(acorde) for acorde in por_compas),
-        pistas=tuple(pistas),
+        pistas=_pistas(crudas, pack, f"{semilla}:{elegida.nombre}", humanizar),
     )
+
+
+def tipos_de_seccion(
+    compases: int, frase: int, corte_al_final: bool
+) -> tuple[str, ...]:
+    """Relleno al cerrar cada frase; la sección termina en corte o en relleno."""
+    tipos = []
+    for numero in range(1, compases + 1):
+        if numero == compases:
+            tipos.append("corte" if corte_al_final else "relleno")
+        elif numero % frase == 0:
+            tipos.append("relleno")
+        else:
+            tipos.append("base")
+    return tuple(tipos)
+
+
+def crear_cancion(
+    pack: Pack,
+    partes: tuple[tuple[str, int], ...] | None = None,
+    variacion: int | str = 0,
+    *,
+    bpm: int | None = None,
+    tonalidad: str | None = None,
+    semilla: int = 0,
+    humanizar: bool = True,
+    acordes: str | None = None,
+) -> Beat:
+    """La canción entera, sección por sección (por defecto, la estructura del pack).
+
+    Cada sección toma el ritmo de la variación, su propia progresión y calla los
+    instrumentos que diga el pack. Antes de cada coro y al final hay un corte.
+    """
+    partes = partes or pack.estructura
+    if not partes:
+        raise ErrorBeat(f"el pack {pack.nombre!r} no tiene estructura ni secciones")
+    elegida = _elegir_variacion(pack, variacion)
+    tempo = _tempo(pack, bpm)
+    desconocidas = [nombre for nombre, _ in partes if nombre not in pack.secciones]
+    if desconocidas:
+        raise ErrorBeat(f"secciones desconocidas: {', '.join(desconocidas)}")
+    capa = _elegir_capa(pack, acordes)
+    instrumentos = list(pack.instrumentos.values())
+    crudas: dict[str, list[Nota]] = {i.nombre: [] for i in instrumentos}
+    if capa is not None:
+        crudas[capa.nombre] = []
+    todos: list[Acorde] = []
+    marcas: list[Marca] = []
+    vistas: dict[str, int] = {}
+    clave = ""
+    for posicion, (nombre, compases) in enumerate(partes):
+        seccion = pack.secciones[nombre]
+        siguiente = partes[posicion + 1][0] if posicion + 1 < len(partes) else None
+        tipos = tipos_de_seccion(compases, pack.frase, siguiente in (None, "coro"))
+        clave, por_compas = _acordes(
+            tonalidad or pack.tonalidad,
+            seccion.progresion or elegida.progresion,
+            compases,
+        )
+        corrimiento = len(todos) * pack.largo_compas
+        for instrumento in instrumentos:
+            if instrumento.nombre not in seccion.sin:
+                hechas = _notas(pack, instrumento, elegida, tipos, por_compas)
+                crudas[instrumento.nombre] += _correr(hechas, corrimiento)
+        if capa is not None and seccion.acordes:
+            hechas = _notas_capa(pack, capa, tipos, por_compas)
+            crudas[capa.nombre] += _correr(hechas, corrimiento)
+        vistas[nombre] = vistas.get(nombre, 0) + 1
+        etiqueta = nombre if vistas[nombre] == 1 else f"{nombre} {vistas[nombre]}"
+        marcas.append(Marca(etiqueta, len(todos), compases))
+        todos.extend(por_compas)
+    filas = [(i.nombre, i.bateria, i.programa, crudas[i.nombre]) for i in instrumentos]
+    if capa is not None:
+        filas.append((capa.nombre, False, capa.programa, crudas[capa.nombre]))
+    return Beat(
+        genero=pack.nombre,
+        variacion=elegida.nombre,
+        bpm=tempo,
+        tonalidad=clave,
+        compas=pack.compas,
+        compases=len(todos),
+        acordes=tuple(str(acorde) for acorde in todos),
+        pistas=_pistas(filas, pack, f"{semilla}:{elegida.nombre}", humanizar),
+        secciones=tuple(marcas),
+    )
+
+
+def _correr(notas: list[Nota], corrimiento: Fraction) -> list[Nota]:
+    return [replace(nota, inicio=nota.inicio + corrimiento) for nota in notas]
+
+
+def _tempo(pack: Pack, bpm: int | None) -> int:
+    tempo = pack.bpm_defecto if bpm is None else bpm
+    if not BPM_MINIMO <= tempo <= BPM_MAXIMO:
+        raise ErrorBeat(
+            f"bpm {tempo} fuera de rango: usa de {BPM_MINIMO} a {BPM_MAXIMO}"
+        )
+    return tempo
+
+
+def _pistas(
+    crudas: list[tuple[str, bool, int | None, list[Nota]]],
+    pack: Pack,
+    semilla: str,
+    humanizar: bool,
+) -> tuple[Pista, ...]:
+    """Humaniza cada pista (siempre igual con la misma semilla) y quita solapes."""
+    pistas = []
+    for nombre, bateria, programa, notas in crudas:
+        if humanizar:
+            azar = random.Random(f"{semilla}:{nombre}")
+            notas = _humanizar(
+                notas, azar, pack.humanizar_tiempo, pack.humanizar_fuerza
+            )
+        pistas.append(Pista(nombre, bateria, programa, _sin_solapes(notas)))
+    return tuple(pistas)
 
 
 def _elegir_capa(pack: Pack, nombre: str | None) -> CapaAcordes | None:

@@ -10,6 +10,7 @@ from pathlib import Path
 import mido
 import pretty_midi
 
+from kerto.notacion import duracion_compas
 from kerto.ritmos.motor import Beat, Pista
 
 PULSOS_POR_NEGRA = 480
@@ -37,19 +38,27 @@ def exportar_midi(beat: Beat, ruta: Path) -> Path:
 
 
 def _pista_de_tempo(beat: Beat, fin: int) -> mido.MidiTrack:
+    """Tempo, compás y una marca por sección (Waveform las muestra en la regla)."""
     numerador, denominador = (int(parte) for parte in beat.compas.split("/"))
-    return mido.MidiTrack(
-        [
-            mido.MetaMessage(
-                "track_name", name=f"Kerto · {beat.genero} · {beat.variacion}"
-            ),
-            mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(beat.bpm)),
-            mido.MetaMessage(
-                "time_signature", numerator=numerador, denominator=denominador
-            ),
-            mido.MetaMessage("end_of_track", time=fin),
-        ]
-    )
+    mensajes = [
+        mido.MetaMessage(
+            "track_name", name=f"Kerto · {beat.genero} · {beat.variacion}"
+        ),
+        mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(beat.bpm)),
+        mido.MetaMessage(
+            "time_signature", numerator=numerador, denominator=denominador
+        ),
+    ]
+    compas = _pulsos(duracion_compas(beat.compas))
+    anterior = 0
+    for marca in beat.secciones:
+        pulso = marca.compas * compas
+        mensajes.append(
+            mido.MetaMessage("marker", text=marca.nombre, time=pulso - anterior)
+        )
+        anterior = pulso
+    mensajes.append(mido.MetaMessage("end_of_track", time=fin - anterior))
+    return mido.MidiTrack(mensajes)
 
 
 def _pista_midi(pista: Pista, canal: int, fin: int) -> mido.MidiTrack:
