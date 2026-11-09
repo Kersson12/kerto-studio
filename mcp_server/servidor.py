@@ -15,6 +15,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from kerto.beat import generar_beats, resumir
 from kerto.cancion import herramientas
 from kerto.cancion.archivo import carpeta_cancion
+from kerto.cancion.nueva import iniciar_cancion
 from kerto.cancion.render import renderizar_cancion as _renderizar_cancion
 from kerto.cancion.render import resumir_cancion
 from kerto.ritmos.pack import cargar_pack, generos_disponibles
@@ -64,14 +65,16 @@ async def crear_beat(
     variacion: str | None = None,
     acordes: str | None = None,
     cancion: str | None = None,
+    vibe: str | None = None,
     sobrescribir: bool = False,
     wav: bool = True,
 ) -> str:
     """Crea variaciones de un beat en MIDI y WAV.
 
     Con `variacion`, solo esa (sirve para transponer la base). `acordes` suma una
-    capa del pack (pad, teclado, piano...). Con `cancion`, guarda en
-    canciones/<cancion>/beats.
+    capa del pack (pad, teclado, piano...). Con `cancion` (un nombre como
+    luna-negra), guarda en canciones/<cancion>/beats y, si la canción es nueva,
+    escribe su cancion.yaml con la `vibe` pedida.
     """
 
     def trabajo() -> str:
@@ -92,7 +95,11 @@ async def crear_beat(
             wav=wav,
             sobrescribir=sobrescribir,
         )
-        return resumir(beats)
+        resumen = resumir(beats)
+        nueva = iniciar_cancion(cancion, beats, vibe, acordes) if cancion else None
+        if nueva is not None:
+            resumen += f"\nCanción nueva: {nueva.as_posix()} · elige la base de oído"
+        return resumen
 
     return _responder(trabajo)
 

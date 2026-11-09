@@ -68,6 +68,19 @@ async def test_listar_generos():
     assert "trap: 130–160 BPM" in texto
 
 
+async def test_crear_beat_de_una_cancion_nueva_escribe_su_cancion_yaml(
+    tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    texto, error = await llamar(
+        "crear_beat", tonalidad="Am", bpm=95, cancion="perreo", vibe="oscuro", wav=False
+    )
+    assert not error, texto
+    ruta = tmp_path / "canciones" / "perreo" / "cancion.yaml"
+    assert ruta.is_file()
+    assert "Canción nueva: canciones/perreo/cancion.yaml" in texto
+
+
 async def test_crear_beat_en_la_carpeta_de_la_cancion(cancion):
     texto, error = await llamar(
         "crear_beat", variacion="movido", acordes="pad", cancion="prueba", wav=False
@@ -75,6 +88,8 @@ async def test_crear_beat_en_la_carpeta_de_la_cancion(cancion):
     assert not error
     assert "beat-2-movido-Am-pad" in texto
     assert (cancion / "beats" / "beat-2-movido-Am-pad.mid").is_file()
+    assert "Canción nueva" not in texto  # su cancion.yaml no se toca
+    assert (cancion / "cancion.yaml").read_text(encoding="utf-8") == CANCION
     texto, error = await llamar("crear_beat", genero="salsa", wav=False)
     assert error and "salsa" in texto
 
