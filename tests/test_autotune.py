@@ -103,3 +103,14 @@ def test_sin_escala_fija_todavia_no_se_puede_medir():
     assert recomendacion.resumen().startswith("Autotune: todavía no se puede medir")
     marcado = recomendar_autotune(informe(40, en_escala=False), estilo="marcado")
     assert marcado.nivel == "marcado"
+
+
+def test_con_el_beat_de_referencia_la_regla_se_aplica_igual():
+    recomendacion = recomendar_autotune(
+        informe(25, en_escala=False), con_referencia=True
+    )
+    assert recomendacion.nivel == "suave"
+    assert "beat" in recomendacion.motivo
+    assert "melodía guía" in recomendacion.motivo
+    limpio = recomendar_autotune(informe(8), con_referencia=True)
+    assert limpio.nivel == "ninguno" and "melodía guía" not in limpio.motivo

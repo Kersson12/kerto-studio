@@ -275,7 +275,7 @@ def tonalidades_comodas(centro: float, modo: str = "menor") -> tuple[str, ...]:
 
 def resumir_informe(informe: Informe) -> str:
     """Cuatro líneas para Claude: duración, rango, afinación y tonalidades."""
-    voz = f"Voz: {informe.segundos:.1f} s, {informe.cantado:.0%} cantado"
+    voz = f"Voz: {informe.segundos:.1f} s, {informe.cantado:.0%} con voz clara"
     rango = (
         f"Rango: {informe.nota_grave}–{informe.nota_aguda}"
         f" · cómodo: {informe.comoda_grave}–{informe.comoda_aguda}"

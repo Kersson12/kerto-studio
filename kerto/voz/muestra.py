@@ -38,6 +38,7 @@ PICO_MINIMO_DB = -20.0
 RUIDO_MAXIMO_DB = -50.0
 DISTANCIA_MINIMA_DB = 25.0  # voz por encima del ruido de la sala
 CANTADO_MINIMO = 0.5
+NOTAS_MINIMAS = 20  # notas largas para medir la afinación con confianza
 SEGUNDOS_PRUEBA = 6.0
 # Lo más fuerte de la voz (percentil 95 del nivel por cuadro) debe caer aquí.
 NIVEL_VOZ_MINIMO_DB = -20.0
@@ -52,11 +53,13 @@ CONSEJOS = {
     "saturacion": "se saturó: baja la ganancia del micrófono o aléjate un poco",
     "nivel_bajo": "el nivel está muy bajo: sube la ganancia o acércate al micrófono",
     "ruido": (
-        "hay ruido de fondo: graba en un cuarto silencioso, sin música por"
-        " parlantes y lejos de ventiladores"
+        "hay sonido de fondo: si grabaste con el beat, baja el volumen de los"
+        " audífonos; si no, graba en un cuarto silencioso"
     ),
     "lejos": "la voz suena lejos: acércate a un palmo del micrófono",
-    "poca_voz": "hubo poca voz: canta más tiempo seguido, sin pausas largas",
+    "poca_voz": (
+        "hubo pocas notas largas: canta más tiempo seguido y alarga las vocales"
+    ),
 }
 
 
@@ -193,24 +196,27 @@ def _consejos(
             (
                 "ruido",
                 (
-                    f"hay ruido de fondo ({ruido:.0f} dBFS): graba en un cuarto"
-                    " silencioso, sin música por parlantes y lejos de ventiladores"
+                    f"hay sonido de fondo ({ruido:.0f} dBFS): si grabaste con el"
+                    " beat, baja el volumen de los audífonos; si no, graba en un"
+                    " cuarto silencioso"
                 ),
             )
         )
     elif ruido is not None and voz - ruido < DISTANCIA_MINIMA_DB:
         consejos.append(("lejos", CONSEJOS["lejos"]))
-    if informe.cantado < CANTADO_MINIMO:
-        consejos.append(
-            (
-                "poca_voz",
-                (
-                    "hubo poca voz en la muestra: canta más tiempo seguido,"
-                    " sin pausas largas"
-                ),
-            )
-        )
+    # Una toma de canción tiene intro y pausas: lo que importa es que haya
+    # suficientes notas largas para medir, no el porcentaje cantado.
+    if informe.cantado < CANTADO_MINIMO and informe.notas < NOTAS_MINIMAS:
+        consejos.append(("poca_voz", CONSEJOS["poca_voz"]))
     return consejos
+
+
+def referencia_de(ruta_audio: Path) -> str | None:
+    """El beat que sonaba al grabar la toma, según su informe JSON (si lo tiene)."""
+    ruta = ruta_audio.with_name(f"{ruta_audio.stem}.informe.json")
+    if not ruta.is_file():
+        return None
+    return json.loads(ruta.read_text(encoding="utf-8")).get("referencia")
 
 
 def guardar_informe(

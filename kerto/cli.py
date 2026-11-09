@@ -128,7 +128,13 @@ def _comando_voz(args: argparse.Namespace) -> int:
         if len(rutas) > 1 or args.accion == "analizar" and args.cancion:
             return _varias_tomas(voz, rutas, args)
         resultado = voz.analizar_muestra(*voz.leer_audio(rutas[0]))
-        autotune = recomendar_autotune(resultado.informe, args.exigencia, args.estilo)
+        referencia = referencia or voz.referencia_de(rutas[0])
+        autotune = recomendar_autotune(
+            resultado.informe,
+            args.exigencia,
+            args.estilo,
+            con_referencia=referencia is not None,
+        )
         informe = voz.guardar_informe(resultado, rutas[0], autotune, referencia)
     except (ErrorVoz, ErrorCancion) as error:
         print(f"Error: {error}", file=sys.stderr)
@@ -146,10 +152,20 @@ def _varias_tomas(voz, rutas: list[Path], args: argparse.Namespace) -> int:
     from kerto.voz.autotune import recomendar_autotune
 
     tomas = voz.analizar_tomas(rutas)
+    con_beat = []
     for ruta, muestra in zip(tomas.archivos, tomas.muestras, strict=True):
-        propia = recomendar_autotune(muestra.informe, args.exigencia, args.estilo)
+        referencia = voz.referencia_de(ruta)
+        con_beat.append(referencia is not None)
+        propia = recomendar_autotune(
+            muestra.informe,
+            args.exigencia,
+            args.estilo,
+            con_referencia=referencia is not None,
+        )
         voz.guardar_informe(muestra, ruta, propia)
-    autotune = recomendar_autotune(tomas.informe, args.exigencia, args.estilo)
+    autotune = recomendar_autotune(
+        tomas.informe, args.exigencia, args.estilo, con_referencia=all(con_beat)
+    )
     informe = voz.guardar_tomas(tomas, autotune)
     consejos = (
         " · ".join(voz.consejos_de_tomas(tomas)) or "las grabaciones están limpias"

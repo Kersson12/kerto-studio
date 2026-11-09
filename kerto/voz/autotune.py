@@ -68,9 +68,17 @@ class Recomendacion:
 
 
 def recomendar_autotune(
-    informe: Informe, exigencia: str = "normal", estilo: str = "segun_voz"
+    informe: Informe,
+    exigencia: str = "normal",
+    estilo: str = "segun_voz",
+    con_referencia: bool = False,
 ) -> Recomendacion:
-    """Aplica la regla del usuario a un informe de voz."""
+    """Aplica la regla del usuario a un informe de voz.
+
+    `con_referencia` dice que la toma se grabó con el beat sonando: entonces la
+    desafinación se mide contra el beat (La 440), aunque las notas no caigan en
+    una escala fija. Sin referencia, eso no se puede medir.
+    """
     if exigencia not in EXIGENCIAS:
         raise ErrorVoz(
             f"exigencia desconocida {exigencia!r}: usa {', '.join(EXIGENCIAS)}"
@@ -79,25 +87,35 @@ def recomendar_autotune(
         raise ErrorVoz(f"estilo desconocido {estilo!r}: usa {', '.join(ESTILOS)}")
     if estilo == "marcado":
         return _recomendacion("marcado", "elegiste el efecto marcado como estilo")
-    if not informe.en_escala:
+    if not informe.en_escala and not con_referencia:
         return _recomendacion(
             SIN_MEDIR,
             "tus notas no caen en una escala fija, así que no hay contra qué medir",
         )
     umbrales = EXIGENCIAS[exigencia]
     cents = round(informe.desafinacion)
+    contra = " contra el beat" if con_referencia else ""
     if informe.desafinacion < umbrales.suave:
         nivel = 0
-        motivo = f"te desvías {cents} cents en promedio, menos de {umbrales.suave:g}"
+        motivo = (
+            f"te desvías {cents} cents en promedio{contra}, menos de {umbrales.suave:g}"
+        )
     elif informe.desafinacion < umbrales.marcado:
         nivel = 1
         motivo = (
-            f"te desvías {cents} cents en promedio, entre {umbrales.suave:g}"
+            f"te desvías {cents} cents en promedio{contra}, entre {umbrales.suave:g}"
             f" y {umbrales.marcado:g}"
         )
     else:
         nivel = 2
-        motivo = f"te desvías {cents} cents en promedio, desde {umbrales.marcado:g}"
+        motivo = (
+            f"te desvías {cents} cents en promedio{contra}, desde {umbrales.marcado:g}"
+        )
+    if not informe.en_escala:
+        motivo += (
+            "; tus notas todavía no siguen la escala del beat: la melodía guía"
+            " (Fase 3) te dirá qué notas cantar"
+        )
     if informe.temblor > TEMBLOR_ALTO and nivel < 2:
         nivel += 1
         motivo += (

@@ -67,7 +67,7 @@ def test_ruido_de_fondo():
     senal = con_silencio(voz())
     ruidosa = senal + azar.normal(0, 0.03, senal.size).astype(np.float32)
     consejos = analizar_muestra(ruidosa, SR).consejos
-    assert any("ruido" in c for c in consejos)
+    assert any("sonido de fondo" in c for c in consejos)
 
 
 def test_poca_voz():
@@ -394,3 +394,52 @@ def test_voz_probar_sin_microfono(capsys, monkeypatch):
     monkeypatch.setattr("kerto.voz.muestra.time.sleep", lambda _: None)
     assert main(["voz", "probar"]) == 1
     assert "micrófono" in capsys.readouterr().err
+
+
+# --- Tomas grabadas con el beat ---
+
+
+def notas_al_azar(sr=SR, semilla=3, cantidad=30):
+    azar = np.random.default_rng(semilla)
+    frecuencias = np.concatenate(
+        [
+            np.full(int(0.3 * sr), 220 * 2 ** (azar.uniform(0, 12) / 12))
+            for _ in range(cantidad)
+        ]
+    )
+    fase = 2 * np.pi * np.cumsum(frecuencias) / sr
+    return (0.4 * np.sin(fase)).astype(np.float32)
+
+
+def test_toma_con_beat_se_mide_contra_el_beat(tmp_path, capsys):
+    [ruta] = tomas_en(tmp_path, con_silencio(notas_al_azar()))
+    muestra = analizar_muestra(*leer_audio(ruta))
+    assert not muestra.informe.en_escala
+    assert main(["voz", "analizar", str(ruta)]) == 0
+    assert "todavía no se puede medir" in capsys.readouterr().out
+    guardar_informe(muestra, ruta, referencia="beat.wav")
+    assert main(["voz", "analizar", str(ruta)]) == 0
+    salida = capsys.readouterr().out
+    assert "todavía no se puede medir" not in salida
+    assert "contra el beat" in salida
+
+
+def test_varias_tomas_con_beat_se_miden_contra_el_beat(tmp_path, capsys):
+    rutas = tomas_en(
+        tmp_path, con_silencio(notas_al_azar()), con_silencio(notas_al_azar(semilla=4))
+    )
+    for ruta in rutas:
+        guardar_informe(
+            analizar_muestra(*leer_audio(ruta)), ruta, referencia="beat.wav"
+        )
+    assert main(["voz", "analizar", *map(str, rutas)]) == 0
+    assert "contra el beat" in capsys.readouterr().out
+
+
+def test_poca_voz_solo_si_tambien_hubo_pocas_notas():
+    from kerto.voz.muestra import CANTADO_MINIMO
+
+    muchas = con_silencio(notas_al_azar(cantidad=30), segundos=12.0)
+    muestra = analizar_muestra(muchas, SR)
+    assert muestra.informe.cantado < CANTADO_MINIMO
+    assert "poca_voz" not in muestra.problemas
