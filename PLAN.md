@@ -330,7 +330,7 @@ Le hablas a Claude Code en lenguaje normal y tu equipo usa el motor directamente
 - [ ] En una sesión nueva, "hazme un perreo en La menor a 95" crea el beat sin que escribas comandos
 - [x] Cada herramienta del MCP responde en menos de 10 líneas
 - [ ] Cada agente habla con la personalidad que elegiste
-- [ ] Las skills propias se activan en las pruebas de skill-creator
+- [x] Las skills propias se activan en las pruebas de skill-creator
 
 ## Fase 5 — Grabación, mezcla y master
 
